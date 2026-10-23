@@ -65,6 +65,8 @@ Frontend-Deploy macht CI nach `terraform apply`: `aws s3 sync` + CloudFront-Inva
   (`feat:`, `fix:`, `infra:`, `docs:` …).
 - CI: PR → Tests + `terraform plan` als Kommentar; Merge auf `main` → Deploy dev; Release-Tag `v*` → Deploy prod
   (manuelle Freigabe über GitHub Environment).
+- API-Vertrag ist `docs/api.yaml` (OpenAPI 3.1). Erst den Vertrag per PR ändern, dann implementieren.
+  Prüfen: `npx @redocly/cli lint docs/api.yaml`.
 - Autorisierung **immer im Backend**: API Gateway prüft das JWT, die Lambda prüft Gruppe (`cognito:groups`) und
   Besitz (Dozent nur eigene Kurse). Das UI blendet nur aus, es schützt nichts.
 - Eine IAM-Rolle pro Lambda, nur die nötigen Aktionen auf konkrete ARNs. Kein `*` bei Actions oder Resources ohne

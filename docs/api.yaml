@@ -1,0 +1,619 @@
+openapi: 3.1.0
+info:
+  title: SPLAN for Mobile API
+  version: 0.1.0
+  description: |
+    Contract between frontend and backend. Change it via PR before implementing.
+
+    Conventions:
+    - JSON, camelCase field names.
+    - Timestamps are ISO 8601 with offset (e.g. `2026-11-02T08:00:00+01:00`); `from`/`to` query
+      parameters are dates (`YYYY-MM-DD`) interpreted in `Europe/Berlin`, `to` inclusive.
+    - Every route requires a Cognito access token (`Authorization: Bearer <jwt>`) except `/ical/{token}`.
+    - Role checks (`cognito:groups`) and ownership checks happen in the Lambda (ADR 0006).
+    - Errors always use the `Error` schema.
+servers:
+  - url: https://{apiId}.execute-api.eu-central-1.amazonaws.com
+    variables:
+      apiId:
+        default: replace-me
+
+security:
+  - cognito: []
+
+tags:
+  - name: catalog
+    description: Lambda `catalog`, any signed-in user
+  - name: student
+    description: Lambda `student`, the signed-in user's own data
+  - name: lecturer
+    description: Lambda `lecturer`, group `lecturer`, own courses only
+  - name: admin
+    description: Lambda `admin`, group `admin`
+  - name: ical
+    description: Lambda `ical`, no JWT, secret token in URL (ADR 0007)
+
+paths:
+  /programs:
+    get:
+      tags: [catalog]
+      summary: List study programs (for the filter)
+      operationId: listPrograms
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Program" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /courses:
+    get:
+      tags: [catalog]
+      summary: List courses of a program and semester
+      operationId: listCourses
+      parameters:
+        - name: programId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: semester
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 10 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Course" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /courses/{courseId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+    get:
+      tags: [catalog]
+      summary: Get one course
+      operationId: getCourse
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Course" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /courses/{courseId}/sessions:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+    get:
+      tags: [catalog]
+      summary: Sessions of a course in a date range
+      operationId: listCourseSessions
+      parameters:
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+      responses:
+        "200":
+          description: OK, sorted by start
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /me/schedule:
+    get:
+      tags: [student]
+      summary: Personal schedule (sessions of all subscribed courses)
+      operationId: getMySchedule
+      parameters:
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+      responses:
+        "200":
+          description: OK, sorted by start
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /me/subscriptions:
+    get:
+      tags: [student]
+      summary: Subscribed courses
+      operationId: listMySubscriptions
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Course" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /me/subscriptions/{courseId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+    put:
+      tags: [student]
+      summary: Subscribe to a course (idempotent)
+      operationId: subscribe
+      responses:
+        "204": { description: Subscribed }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Subscription limit (50) reached
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      tags: [student]
+      summary: Unsubscribe (idempotent)
+      operationId: unsubscribe
+      responses:
+        "204": { description: Unsubscribed }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /me/ical-token:
+    post:
+      tags: [student]
+      summary: Create or rotate the iCal feed URL
+      description: |
+        Invalidates any previous token. Only the hash is stored, so the URL is returned exactly once;
+        the frontend shows it and may keep it in localStorage.
+      operationId: rotateIcalToken
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                    examples: ["https://abc123.execute-api.eu-central-1.amazonaws.com/ical/Zm9vYmFy..."]
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [student]
+      summary: Revoke the iCal feed URL
+      operationId: revokeIcalToken
+      responses:
+        "204": { description: Revoked }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /me:
+    delete:
+      tags: [student]
+      summary: Delete own account (GDPR)
+      description: Deletes subscriptions, iCal token and the Cognito user. The frontend signs out afterwards.
+      operationId: deleteMe
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /lecturer/courses:
+    get:
+      tags: [lecturer]
+      summary: Courses where the caller is the lecturer
+      operationId: listLecturerCourses
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Course" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /lecturer/courses/{courseId}/sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/SessionId"
+    patch:
+      tags: [lecturer]
+      summary: Cancel/restore an own session or change its room
+      description: 403 if the caller is not the course's lecturer. Start and end cannot be changed here.
+      operationId: updateLecturerSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LecturerSessionPatch" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/courses:
+    post:
+      tags: [admin]
+      summary: Create a course
+      operationId: createCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CourseInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Course" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/courses/{courseId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+    put:
+      tags: [admin]
+      summary: Replace a course
+      operationId: updateCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CourseInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Course" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [admin]
+      summary: Delete a course with all its sessions
+      operationId: deleteCourse
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/courses/{courseId}/sessions:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+    post:
+      tags: [admin]
+      summary: Create a session, optionally repeated weekly
+      operationId: createSessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/SessionInput"
+                - type: object
+                  properties:
+                    repeatWeeks:
+                      type: integer
+                      minimum: 1
+                      maximum: 20
+                      default: 1
+                      description: Number of weekly occurrences, starting with `start`.
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/courses/{courseId}/sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/SessionId"
+    put:
+      tags: [admin]
+      summary: Replace a session
+      description: Changing `start` changes the `sessionId`; the response contains the new one.
+      operationId: updateSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SessionInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [admin]
+      summary: Delete a session
+      operationId: deleteSession
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/users:
+    get:
+      tags: [admin]
+      summary: Find a user by email (for role assignment)
+      operationId: findUsers
+      parameters:
+        - name: email
+          in: query
+          required: true
+          description: Prefix match
+          schema: { type: string, minLength: 3 }
+      responses:
+        "200":
+          description: OK, at most 20 results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/users/{userId}/roles:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        description: Cognito `sub`
+        schema: { type: string }
+    put:
+      tags: [admin]
+      summary: Set a user's roles
+      description: An admin cannot remove `admin` from themselves (prevents lockout).
+      operationId: setUserRoles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles]
+              properties:
+                roles:
+                  type: array
+                  uniqueItems: true
+                  items: { $ref: "#/components/schemas/Role" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /ical/{token}:
+    get:
+      tags: [ical]
+      summary: Personal iCal feed
+      description: Sessions from 4 weeks ago until 6 months ahead. Cancelled sessions have `STATUS:CANCELLED`.
+      operationId: getIcalFeed
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, minLength: 43 }
+      responses:
+        "200":
+          description: OK
+          content:
+            text/calendar:
+              schema: { type: string }
+        "404":
+          description: Unknown or revoked token (no distinction, to avoid probing)
+
+components:
+  securitySchemes:
+    cognito:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Cognito access token, validated by the API Gateway JWT authorizer.
+
+  parameters:
+    CourseId:
+      name: courseId
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[a-z0-9-]{1,64}$" }
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      description: "`<start as yyyyMMddTHHmmZ (UTC)>-<random>`, sortable by start (ADR 0003)"
+      schema: { type: string, pattern: "^[0-9]{8}T[0-9]{4}Z-[a-z0-9]{6}$", examples: ["20261102T0700Z-k3x9qa"] }
+    From:
+      name: from
+      in: query
+      required: true
+      schema: { type: string, format: date }
+    To:
+      name: to
+      in: query
+      required: true
+      description: Inclusive; at most 31 days after `from`.
+      schema: { type: string, format: date }
+
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Missing role or not the owner
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [bad_request, unauthorized, forbidden, not_found, conflict, internal]
+        message: { type: string }
+
+    Role:
+      type: string
+      enum: [lecturer, admin]
+      description: No role means student.
+
+    Program:
+      type: object
+      required: [id, name, semesters]
+      properties:
+        id: { type: string, examples: ["seb"] }
+        name: { type: string, examples: ["Software Engineering (B.Sc.)"] }
+        semesters: { type: integer, minimum: 1, maximum: 10, examples: [7] }
+
+    CourseInput:
+      type: object
+      required: [name, programId, semester]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120, examples: ["Cloud Computing"] }
+        shortName: { type: string, maxLength: 20, examples: ["CC"] }
+        programId: { type: string }
+        semester: { type: integer, minimum: 1, maximum: 10 }
+        lecturerId:
+          type: [string, "null"]
+          description: Cognito `sub` of the lecturer
+        lecturerName:
+          type: [string, "null"]
+          maxLength: 120
+          description: Display name, stored on the course so no user lookup is needed when reading
+
+    Course:
+      allOf:
+        - $ref: "#/components/schemas/CourseInput"
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string, examples: ["seb-7-cloud-computing"] }
+
+    SessionInput:
+      type: object
+      required: [start, end, room]
+      properties:
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time, description: "Must be after `start`, same day" }
+        room: { type: string, minLength: 1, maxLength: 40, examples: ["F.201"] }
+        kind:
+          type: string
+          enum: [lecture, lab, exercise, exam]
+          default: lecture
+
+    LecturerSessionPatch:
+      type: object
+      minProperties: 1
+      properties:
+        cancelled: { type: boolean }
+        room: { type: string, minLength: 1, maxLength: 40 }
+        note: { type: [string, "null"], maxLength: 200, examples: ["Krankheitsbedingt"] }
+
+    Session:
+      allOf:
+        - $ref: "#/components/schemas/SessionInput"
+        - type: object
+          required: [id, courseId, courseName, cancelled, updatedAt]
+          properties:
+            id: { type: string }
+            courseId: { type: string }
+            courseName: { type: string, description: Denormalized for the schedule view }
+            cancelled: { type: boolean }
+            originalRoom:
+              type: [string, "null"]
+              description: Set when the room was changed after creation; UI marks the session as changed
+            note: { type: [string, "null"] }
+            updatedAt: { type: string, format: date-time }
+
+    SessionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Session" }
+
+    User:
+      type: object
+      required: [id, email, roles]
+      properties:
+        id: { type: string, description: Cognito `sub` }
+        email: { type: string, format: email }
+        roles:
+          type: array
+          items: { $ref: "#/components/schemas/Role" }

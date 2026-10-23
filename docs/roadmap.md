@@ -10,7 +10,7 @@ Grundsatz: früh deployen, jede Woche läuft `main` auf dev.
 - [ ] B: `infra/bootstrap` (State-Bucket, OIDC-Rolle), `envs/dev`, CI-Workflow plan/apply
 - [ ] B: Walking Skeleton: `GET /health`-Lambda hinter API Gateway
 - [ ] A: Vite-React-App mit Tailwind und shadcn/ui, auf S3/CloudFront deployt
-- [ ] A+B: API-Vertrag (OpenAPI) und Datenmodell festlegen (ADR 0003)
+- [x] A+B: API-Vertrag (`docs/api.yaml`) und Datenmodell (ADR 0003) entworfen; gemeinsam reviewen
 - [ ] A+B: Repo-Konventionen, npm workspaces, Lint/Format, PR-Template
 
 ## M1: Login und persönlicher Plan (bis 15.11.)

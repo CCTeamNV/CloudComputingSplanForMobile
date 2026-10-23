@@ -19,14 +19,14 @@ Option 3:
 
 | Lambda | Routen | Rechte |
 |---|---|---|
-| `catalog` | `GET /courses`, `GET /courses/{id}/sessions` | DynamoDB Query/GetItem |
-| `student` | `/me/*` (Abos, Plan, iCal-Token, Account löschen) | DynamoDB Read/Write auf eigene Items, `cognito-idp:AdminDeleteUser` |
-| `lecturer` | `PATCH /lecturer/sessions/{id}` | DynamoDB GetItem/UpdateItem |
+| `catalog` | `GET /programs`, `GET /courses*` | DynamoDB Query/GetItem |
+| `student` | `/me*` (Abos, Plan, iCal-Token, Account löschen) | DynamoDB Read/Write auf eigene Items, `cognito-idp:AdminDeleteUser` |
+| `lecturer` | `GET /lecturer/courses`, `PATCH /lecturer/courses/{id}/sessions/{id}` | DynamoDB Query (GSI2)/GetItem/UpdateItem |
 | `admin` | `/admin/*` | DynamoDB CRUD, `cognito-idp:AdminAddUserToGroup/RemoveUserFromGroup/ListUsers` |
 | `ical` | `GET /ical/{token}` | DynamoDB GetItem/Query |
 | `pre-signup` | Cognito-Trigger | keine |
 
-Alle Rechte auf die konkreten ARNs (Tabelle, User Pool) beschränkt.
+Alle Rechte auf die konkreten ARNs (Tabelle, User Pool) beschränkt. Vollständige Routen: `docs/api.yaml`.
 
 ## Konsequenzen
 
