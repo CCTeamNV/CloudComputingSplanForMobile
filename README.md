@@ -96,8 +96,8 @@ Details: [ADR 0002](docs/decisions/0002-serverless-core-fargate-loadgen.md).
 
 ### Datenmodell
 
-Single-Table-Design in DynamoDB ([ADR 0003](docs/decisions/0003-dynamodb-single-table.md)): Kurse, Termine
-(mit Status `scheduled | cancelled | room_changed`), Abos, iCal-Tokens. Gepflegt über die Admin-UI, Startdaten per
+Single-Table-Design in DynamoDB ([ADR 0003](docs/decisions/0003-dynamodb-single-table.md)): Studiengänge, Kurse,
+Termine (abgesagt bzw. Raum geändert als eigene Felder), Abos, iCal-Tokens. API-Vertrag: [`docs/api.yaml`](docs/api.yaml). Gepflegt über die Admin-UI, Startdaten per
 Seed-Skript (realistischer Studiengang SEB, keine echten Personendaten).
 
 - TODO: Architektur nach jedem Meilenstein aktualisieren
