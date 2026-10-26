@@ -15,7 +15,9 @@ iCal-Abo, Admin-UI (Kurse/Termine/Rollen), Dozent sagt eigene Termine ab bzw. ä
 
 ## Tech-Stack
 
-- AWS `eu-central-1`, eigener Account, Terraform (>= 1.10) für alles
+- AWS `eu-central-1`, Terraform (>= 1.10) für alles
+- Zwei AWS-Accounts (je Teammitglied einer, kein geteilter Zugriff), jeder mit eigener dev- und prod-Instanz;
+  Referenz für Lasttest und Präsentation ist `048861330600` (ADR 0012)
 - Frontend: React-PWA, Vite, TypeScript, Tailwind, shadcn/ui; S3 + CloudFront (OAC)
 - Backend: API Gateway HTTP API + Lambda (Node.js, TypeScript, esbuild), Powertools for AWS Lambda (TS)
 - Daten: DynamoDB on-demand, Single-Table-Design (`docs/decisions/0003-dynamodb-single-table.md`)
@@ -42,6 +44,9 @@ docs/decisions/          ADRs
 ## Befehle (geplant, noch nicht implementiert)
 
 ```bash
+# anmelden (kurzlebige Credentials, keine Access Keys)
+aws login --profile splan && export AWS_PROFILE=splan
+
 # einmal pro Account
 cd infra/bootstrap && terraform init && terraform apply
 
@@ -64,7 +69,7 @@ Frontend-Deploy macht CI nach `terraform apply`: `aws s3 sync` + CloudFront-Inva
 - Trunk-based: kurze Feature-Branches von `main`, PR mit Review durch die andere Person, Conventional Commits
   (`feat:`, `fix:`, `infra:`, `docs:` …).
 - CI: PR → Tests + `terraform plan` als Kommentar; Merge auf `main` → Deploy dev; Release-Tag `v*` → Deploy prod
-  (manuelle Freigabe über GitHub Environment).
+  (manuelle Freigabe über GitHub Environment). Jeweils per Matrix in beide Accounts.
 - API-Vertrag ist `docs/api.yaml` (OpenAPI 3.1). Erst den Vertrag per PR ändern, dann implementieren.
   Prüfen: `npx @redocly/cli lint docs/api.yaml`.
 - Autorisierung **immer im Backend**: API Gateway prüft das JWT, die Lambda prüft Gruppe (`cognito:groups`) und
@@ -83,6 +88,11 @@ Frontend-Deploy macht CI nach `terraform apply`: `aws s3 sync` + CloudFront-Inva
 - Lieber klein und sauber als groß und halbfertig.
 
 ## Bekannte Stolpersteine
+
+- Die Accounts laufen im **AWS Free Plan** (`048861330600`: Ablauf 05.04.2027). **Keine AWS Organization anlegen**:
+  das stellt auf den kostenpflichtigen Tarif um und das Guthaben verfällt. Deshalb kein IAM Identity Center; Menschen
+  nutzen IAM-User mit MFA und `aws login`. Root-Access-Keys nicht verwenden.
+  Status: `aws freetier get-account-plan-state`.
 
 - Neue AWS-Accounts haben oft nur 10 Lambda-Concurrency: früh Quota-Erhöhung beantragen (Service Quotas).
 - Cognito-Standard-E-Mail-Versand ist auf wenige Mails/Tag begrenzt: Testuser per Seed-Skript ohne E-Mail anlegen.

@@ -1,12 +1,19 @@
 # Roadmap bis zur Abgabe am 18.01.2027
 
-Rollen: **A** = Frontend/UX, **B** = Infra/Backend. Jeder PR wird von der anderen Person reviewt.
+Rollen: **A** = Frontend/UX, **B** = Infra/Backend (Zuordnung der Personen noch offen).
+Jeder PR wird von der anderen Person reviewt. Jede Person betreibt dev und prod im eigenen Account (ADR 0012).
 Grundsatz: früh deployen, jede Woche läuft `main` auf dev.
 
 ## M0: Fundament (bis 01.11.)
 
-- [ ] B: Lambda-Concurrency-Quota-Erhöhung beantragen (neue Accounts haben oft nur 10)
-- [ ] B: AWS Budget mit Alarmen 10/25/50 € (zuerst, noch vor allem anderen)
+Account-Setup, **jede Person im eigenen Account**:
+
+- [ ] AWS Budget mit Alarmen bei 20/50/100 % von 50 $ (Noa: erledigt)
+- [ ] IAM-User in Gruppe `admins` mit MFA, `aws login` eingerichtet, Root-Access-Keys gelöscht (Noa: User angelegt)
+- [ ] Lambda-Concurrency-Quota prüfen; im Referenz-Account auf 1.000 erhöhen (Noa: beantragt)
+
+Projekt:
+
 - [ ] B: `infra/bootstrap` (State-Bucket, OIDC-Rolle), `envs/dev`, CI-Workflow plan/apply
 - [ ] B: Walking Skeleton: `GET /health`-Lambda hinter API Gateway
 - [ ] A: Vite-React-App mit Tailwind und shadcn/ui, auf S3/CloudFront deployt

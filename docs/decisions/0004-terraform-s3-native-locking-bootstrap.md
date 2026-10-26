@@ -19,7 +19,8 @@ Zwei Personen und CI arbeiten auf denselben Umgebungen. Der State muss geteilt u
 
 Option 3. Ein kleiner Stack `infra/bootstrap/` mit lokalem State legt den versionierten, verschlüsselten
 State-Bucket und die GitHub-OIDC-Rolle an. Danach nutzen `infra/envs/dev` und `infra/envs/prod` denselben Bucket mit
-eigenem Key. Gemeinsame Logik liegt in `infra/modules/` (auth, api, data, frontend, monitoring, loadtest).
+eigenem Key. Jeder der beiden Accounts (ADR 0012) hat seinen eigenen Bootstrap und State-Bucket; der Bucket-Name
+enthält die Account-ID (`splan-tfstate-<account-id>`), damit er global eindeutig ist und der Code account-neutral bleibt. Gemeinsame Logik liegt in `infra/modules/` (auth, api, data, frontend, monitoring, loadtest).
 
 ## Konsequenzen
 

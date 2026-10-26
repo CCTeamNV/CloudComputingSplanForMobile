@@ -6,7 +6,7 @@
 ## Kontext
 
 Wir brauchen einen Cloud-Provider mit Identity Provider, Serverless-Compute, managed DB und Container-Laufzeit.
-Daten von Studierenden sollen in der EU bleiben. Budget: 100 € Credits, eigener Account.
+Daten von Studierenden sollen in der EU bleiben. Budget: je Teammitglied ein eigener Free-Plan-Account mit ~100 $ Guthaben (ADR 0012).
 
 ## Optionen
 

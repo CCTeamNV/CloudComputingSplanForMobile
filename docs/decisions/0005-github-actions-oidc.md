@@ -21,7 +21,8 @@ Option 3. Ablauf:
 - Merge auf `main`: `terraform apply` dev, dann Frontend-Deploy (`s3 sync` + Invalidation)
 - Tag `v*`: `terraform apply` prod nach manueller Freigabe über ein GitHub Environment
 
-Die Trust Policy der Rolle erlaubt nur dieses Repo; Plan-Rolle (read-only) und Apply-Rollen pro Environment getrennt.
+Jeder Schritt läuft per Matrix gegen beide Accounts (ADR 0012); die Rollen-ARNs stehen als GitHub-Variablen
+(keine Secrets) im jeweiligen Environment. Die Trust Policy der Rolle erlaubt nur dieses Repo; Plan-Rolle (read-only) und Apply-Rollen pro Environment getrennt.
 
 ## Konsequenzen
 
