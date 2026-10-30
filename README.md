@@ -26,8 +26,9 @@ Raum ändern), Admins (Kurse, Termine, Räume, Rollen pflegen).
 ### Cloud-Provider
 
 AWS in `eu-central-1` (Frankfurt), siehe [ADR 0001](docs/decisions/0001-aws-eu-central-1.md): Daten bleiben in der EU,
-breitestes Serverless-Angebot mit echtem Scale-to-Zero (Lambda, DynamoDB on-demand, Cognito), großzügiges Free Tier,
-eigener Account mit 100 € Credits.
+breitestes Serverless-Angebot mit echtem Scale-to-Zero (Lambda, DynamoDB on-demand, Cognito), großzügiges Free Tier.
+Zwei Free-Plan-Accounts (je Teammitglied einer), jeder betreibt eine eigene dev- und prod-Instanz
+([ADR 0012](docs/decisions/0012-two-accounts-human-access.md)).
 
 ### Übersicht
 
@@ -113,9 +114,10 @@ infra/
   envs/dev, envs/prod  Root-Module mit eigenem State-Key und tfvars
 ```
 
-**Setup auf leerem Account**
+**Setup auf leerem Account** (identisch in beiden Accounts)
 
 ```bash
+aws login --profile splan && export AWS_PROFILE=splan
 cd infra/bootstrap && terraform init && terraform apply   # einmal pro Account
 cd infra/envs/dev  && terraform init && terraform apply
 ```
@@ -128,8 +130,8 @@ cd infra/envs/dev  && terraform init && terraform apply
 | Ereignis | Aktion |
 |---|---|
 | Pull Request | Lint, Tests, `terraform plan` als PR-Kommentar |
-| Merge auf `main` | `terraform apply` dev + Frontend-Deploy |
-| Tag `v*` | `terraform apply` prod nach manueller Freigabe |
+| Merge auf `main` | `terraform apply` dev + Frontend-Deploy, in beiden Accounts |
+| Tag `v*` | `terraform apply` prod nach manueller Freigabe, in beiden Accounts |
 
 - TODO: Ablauf `apply` → `destroy` → `apply` auf frischem Account einmal durchspielen und hier dokumentieren
 
@@ -151,6 +153,13 @@ Cognito User Pool ([ADR 0006](docs/decisions/0006-cognito-groups-authorization.m
 2. Lambda: prüft die Gruppe aus `cognito:groups` und bei Dozierenden den Besitz (`course.lecturerId == sub`).
 3. iCal: Kalender-Apps können kein JWT senden → geheime Token-URL pro User, nur als Hash gespeichert, neu erzeugbar
    ([ADR 0007](docs/decisions/0007-ical-token-urls.md)).
+
+### Zugriff auf die AWS-Accounts
+
+- Pro Account ein IAM-User mit Konsolen-Passwort und MFA (Gruppe `admins`); CLI über `aws login` mit kurzlebigen
+  Credentials. Keine Access Keys, Root-Keys gelöscht.
+- Kein IAM Identity Center: Es setzt eine AWS Organization voraus, die den Free Plan beenden würde
+  ([ADR 0012](docs/decisions/0012-two-accounts-human-access.md)).
 
 ### Least Privilege und Zero Trust
 
@@ -211,6 +220,7 @@ API Gateway und CloudFront managed. Engpässe: Lambda-Concurrency-Quota des Acco
 - Tokens für Testuser werden im k6-Setup einmalig geholt (Cognito-Auth-Quotas)
 
 **Werkzeug:** k6 als Container auf ECS Fargate, N parallele Tasks, Ergebnisse in CloudWatch Logs.
+Der Lasttest läuft gegen dev im Referenz-Account `048861330600`.
 
 **Aufgezeichnete Metriken:** p50/p95/p99-Latenz, Fehlerrate, req/s (k6); Lambda `ConcurrentExecutions`, Throttles,
 Cold Starts, DynamoDB-Consumed-Capacity (CloudWatch).
@@ -219,7 +229,8 @@ Cold Starts, DynamoDB-Consumed-Capacity (CloudWatch).
 
 ## Pricing
 
-Annahmen und Rechnung mit dem AWS Pricing Calculator, Preise `eu-central-1`.
+Annahmen und Rechnung mit dem AWS Pricing Calculator, Preise `eu-central-1`. Alle Werte gelten für eine Instanz
+(ein Account, eine Umgebung).
 
 | Szenario | Nutzer | Annahmen | Kosten/Monat | Kosten/User/Monat |
 |---|---|---|---|---|
