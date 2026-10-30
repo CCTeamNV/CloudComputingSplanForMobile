@@ -4,10 +4,10 @@ variable "region" {
   default     = "eu-central-1"
 }
 
-variable "github_repo" {
-  description = "GitHub repository allowed to assume the CI roles, as owner/name."
+variable "github_subject_prefix" {
+  description = "OIDC sub claim prefix of the repo. The org uses immutable subjects (owner@id/repo@id), see GET repos/<repo>/actions/oidc/customization/sub."
   type        = string
-  default     = "CCTeamNV/CloudComputingSplanForMobile"
+  default     = "repo:CCTeamNV@350441977/CloudComputingSplanForMobile@1415461481"
 }
 
 variable "environments" {

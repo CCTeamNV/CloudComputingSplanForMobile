@@ -108,8 +108,8 @@ data "aws_iam_policy_document" "trust_plan" {
       test     = "StringEquals"
       variable = "${local.oidc_host}:sub"
       values = [
-        "repo:${var.github_repo}:pull_request",
-        "repo:${var.github_repo}:ref:refs/heads/main",
+        "${var.github_subject_prefix}:pull_request",
+        "${var.github_subject_prefix}:ref:refs/heads/main",
       ]
     }
   }
@@ -166,7 +166,7 @@ data "aws_iam_policy_document" "trust_apply" {
     condition {
       test     = "StringEquals"
       variable = "${local.oidc_host}:sub"
-      values   = ["repo:${var.github_repo}:environment:${each.key}"]
+      values   = ["${var.github_subject_prefix}:environment:${each.key}"]
     }
   }
 }
