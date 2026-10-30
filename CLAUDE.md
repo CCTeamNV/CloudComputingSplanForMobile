@@ -68,7 +68,7 @@ Frontend-Deploy macht CI nach `terraform apply`: `aws s3 sync` + CloudFront-Inva
 - Code, Bezeichner, Commits: **Englisch**. README, ADRs, Doku: **Deutsch**.
 - Trunk-based: kurze Feature-Branches von `main`, PR mit Review durch die andere Person, Conventional Commits
   (`feat:`, `fix:`, `infra:`, `docs:` …).
-- CI: PR → Tests + `terraform plan` als Kommentar; Merge auf `main` → Deploy dev; Release-Tag `v*` → Deploy prod
+- CI (`.github/workflows/ci.yml`): PR → Tests + `terraform plan` in der Job-Zusammenfassung; Merge auf `main` → Deploy dev; Release-Tag `v*` → Deploy prod
   (manuelle Freigabe über GitHub Environment). Jeweils per Matrix in beide Accounts.
 - API-Vertrag ist `docs/api.yaml` (OpenAPI 3.1). Erst den Vertrag per PR ändern, dann implementieren.
   Prüfen: `npx @redocly/cli lint docs/api.yaml`.

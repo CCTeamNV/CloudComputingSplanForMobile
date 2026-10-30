@@ -1,0 +1,10 @@
+{
+  "name": "splan-for-mobile",
+  "private": true,
+  "workspaces": [
+    "backend"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}
