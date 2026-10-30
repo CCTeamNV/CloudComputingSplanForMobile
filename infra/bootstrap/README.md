@@ -25,3 +25,27 @@ Die Outputs (`plan_role_arn`, `apply_role_arns`) kommen als Variablen in GitHub 
 ## Abbauen
 
 Erst alle `infra/envs/*` zerstören, dann hier `terraform destroy`. Der State-Bucket wird samt Inhalt gelöscht.
+
+## GitHub einrichten (einmalig, nur Repo-Admin)
+
+Das Repo ist öffentlich, damit Environments mit Schutzregeln kostenlos verfügbar sind (bei privaten Repos fehlen
+Required Reviewers). Die Apply-Rollen vertrauen nur Jobs im jeweiligen Environment; die Regeln hier begrenzen, wer
+dorthin deployen darf.
+
+```bash
+REPO=Bronterrzel/CloudComputingSplanForMobile
+gh repo edit $REPO --visibility public --accept-visibility-change-consequences
+
+# dev: nur Branch main
+gh api -X PUT repos/$REPO/environments/dev --input - <<'JSON'
+{"deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true}}
+JSON
+gh api -X POST repos/$REPO/environments/dev/deployment-branch-policies -f name=main -f type=branch
+
+# prod: nur Tags v*, Freigabe durch eine der beiden Personen (IDs: noakaehling, Bronterrzel)
+gh api -X PUT repos/$REPO/environments/prod --input - <<'JSON'
+{"deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true},
+ "reviewers": [{"type": "User", "id": 163006316}, {"type": "User", "id": 44360497}]}
+JSON
+gh api -X POST repos/$REPO/environments/prod/deployment-branch-policies -f name='v*' -f type=tag
+```

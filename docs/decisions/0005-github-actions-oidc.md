@@ -23,6 +23,10 @@ Option 3. Ablauf:
 
 Die Trust Policy der Rolle erlaubt nur dieses Repo; Plan-Rolle (read-only) und Apply-Rollen pro Environment getrennt.
 
+Das Repo ist **öffentlich**: Bei privaten Repos bietet GitHub Required Reviewers nur im Enterprise-Plan und
+Deployment-Branch-Regeln erst ab Pro an. Environment `dev` erlaubt nur Branch `main`, `prod` nur Tags `v*` mit
+Freigabe durch eine der beiden Personen. Einrichtung: `infra/bootstrap/README.md`.
+
 ## Konsequenzen
 
 - Keine Secrets im Repo oder in GitHub.
