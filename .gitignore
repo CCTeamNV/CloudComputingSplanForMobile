@@ -7,3 +7,4 @@ dist/
 *.tfplan
 crash.log
 .DS_Store
+infra/bootstrap/terraform.tfvars
