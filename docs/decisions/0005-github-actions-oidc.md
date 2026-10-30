@@ -21,8 +21,11 @@ Option 3. Ablauf:
 - Merge auf `main`: `terraform apply` dev, dann Frontend-Deploy (`s3 sync` + Invalidation)
 - Tag `v*`: `terraform apply` prod nach manueller Freigabe über ein GitHub Environment
 
-Jeder Schritt läuft per Matrix gegen beide Accounts (ADR 0012); die Rollen-ARNs stehen als GitHub-Variablen
-(keine Secrets) im jeweiligen Environment. Die Trust Policy der Rolle erlaubt nur dieses Repo; Plan-Rolle (read-only) und Apply-Rollen pro Environment getrennt.
+Jeder Schritt läuft per Matrix gegen beide Accounts (ADR 0012). Die Rollennamen sind fest, die CI bildet die ARNs aus
+der Repo-Variable `AWS_ACCOUNT_IDS` (keine Secrets). Plan-Rolle (read-only) und Apply-Rollen pro Environment sind
+getrennt. Die Trust Policy prüft das unveränderliche OIDC-Subject der Organisation
+(`repo:CCTeamNV@<org-id>/CloudComputingSplanForMobile@<repo-id>:…`), damit ein umbenanntes oder neu angelegtes Repo
+gleichen Namens keinen Zugriff bekommt.
 
 Das Repo ist **öffentlich**: Bei privaten Repos bietet GitHub Required Reviewers nur im Enterprise-Plan und
 Deployment-Branch-Regeln erst ab Pro an. Environment `dev` erlaubt nur Branch `main`, `prod` nur Tags `v*` mit
