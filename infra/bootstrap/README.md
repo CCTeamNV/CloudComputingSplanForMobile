@@ -20,7 +20,8 @@ terraform init
 terraform apply
 ```
 
-Die Outputs (`plan_role_arn`, `apply_role_arns`) kommen als Variablen in GitHub (keine Secrets).
+Die Rollennamen sind fest (`splan-gha-plan`, `splan-gha-apply-<env>`); die CI baut die ARNs aus der Repo-Variable
+`AWS_ACCOUNT_IDS` (JSON-Liste, z. B. `["048861330600"]`). Nach dem Bootstrap eines weiteren Accounts dessen ID dort ergänzen.
 
 ## Abbauen
 
