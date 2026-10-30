@@ -129,7 +129,7 @@ cd infra/envs/dev  && terraform init && terraform apply
 
 | Ereignis | Aktion |
 |---|---|
-| Pull Request | Lint, Tests, `terraform plan` als PR-Kommentar |
+| Pull Request | Typecheck, Tests, `terraform plan` in der Job-Zusammenfassung |
 | Merge auf `main` | `terraform apply` dev + Frontend-Deploy, in beiden Accounts |
 | Tag `v*` | `terraform apply` prod nach manueller Freigabe, in beiden Accounts |
 

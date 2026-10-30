@@ -17,7 +17,7 @@ Deployments sollen reproduzierbar sein und keine langlebigen AWS-Access-Keys ben
 
 Option 3. Ablauf:
 
-- PR: Lint, Tests, `terraform plan` (dev) als PR-Kommentar
+- PR: Typecheck, Tests, `terraform plan` (dev) in der Job-Zusammenfassung des Workflows
 - Merge auf `main`: `terraform apply` dev, dann Frontend-Deploy (`s3 sync` + Invalidation)
 - Tag `v*`: `terraform apply` prod nach manueller Freigabe über ein GitHub Environment
 

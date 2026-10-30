@@ -1,0 +1,103 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write # OIDC to AWS, no access keys (ADR 0005)
+
+env:
+  TF_VERSION: 1.16.4
+  AWS_REGION: eu-central-1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck -w backend
+      - run: npm test -w backend
+
+  plan:
+    if: github.event_name == 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        account: ${{ fromJSON(vars.AWS_ACCOUNT_IDS) }}
+    defaults:
+      run:
+        working-directory: infra/envs/dev
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci && npm run build -w backend
+        working-directory: .
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::${{ matrix.account }}:role/splan-gha-plan
+          aws-region: ${{ env.AWS_REGION }}
+      - run: terraform fmt -check -recursive ../..
+      - run: terraform init -input=false -backend-config="bucket=splan-tfstate-${{ matrix.account }}"
+      - run: terraform plan -input=false -no-color | tee plan.txt
+      - name: Plan to job summary
+        if: always()
+        run: |
+          {
+            echo "### terraform plan dev (${{ matrix.account }})"
+            echo '```'
+            tail -c 60000 plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: dev
+    strategy:
+      fail-fast: false
+      matrix:
+        account: ${{ fromJSON(vars.AWS_ACCOUNT_IDS) }}
+    concurrency:
+      group: deploy-dev-${{ matrix.account }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: infra/envs/dev
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci && npm run build -w backend
+        working-directory: .
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::${{ matrix.account }}:role/splan-gha-apply-dev
+          aws-region: ${{ env.AWS_REGION }}
+      - run: terraform init -input=false -backend-config="bucket=splan-tfstate-${{ matrix.account }}"
+      - run: terraform apply -input=false -auto-approve
+      - name: Smoke test
+        run: curl --fail --silent --show-error --retry 3 "$(terraform output -raw api_url)/health"
