@@ -33,7 +33,7 @@ Required Reviewers). Die Apply-Rollen vertrauen nur Jobs im jeweiligen Environme
 dorthin deployen darf.
 
 ```bash
-REPO=Bronterrzel/CloudComputingSplanForMobile
+REPO=CCTeamNV/CloudComputingSplanForMobile
 gh repo edit $REPO --visibility public --accept-visibility-change-consequences
 
 # dev: nur Branch main

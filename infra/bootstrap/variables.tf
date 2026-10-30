@@ -7,7 +7,7 @@ variable "region" {
 variable "github_repo" {
   description = "GitHub repository allowed to assume the CI roles, as owner/name."
   type        = string
-  default     = "Bronterrzel/CloudComputingSplanForMobile"
+  default     = "CCTeamNV/CloudComputingSplanForMobile"
 }
 
 variable "environments" {
