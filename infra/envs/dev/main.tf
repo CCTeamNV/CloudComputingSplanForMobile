@@ -44,8 +44,24 @@ module "api" {
 
   throttle_rate_limit  = 200
   throttle_burst_limit = 400
+  cors_allow_origins   = [module.frontend.url, "http://localhost:5173"]
+}
+
+module "frontend" {
+  source = "../../modules/frontend"
+
+  env    = "dev"
+  config = { apiUrl = module.api.api_url }
 }
 
 output "api_url" {
   value = module.api.api_url
+}
+
+output "frontend_url" {
+  value = module.frontend.url
+}
+
+output "frontend_bucket" {
+  value = module.frontend.bucket
 }

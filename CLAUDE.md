@@ -60,7 +60,8 @@ npm run dev -w frontend     # lokales Frontend gegen dev-API
 npm test --workspaces
 ```
 
-Frontend-Deploy macht CI nach `terraform apply`: `aws s3 sync` + CloudFront-Invalidation. Die Laufzeitkonfiguration
+Frontend-Deploy macht CI nach `terraform apply`: `aws s3 sync` (ohne `config.json`); `index.html` und `config.json` cacht
+CloudFront nicht, daher keine Invalidation nötig. Die Laufzeitkonfiguration
 (API-URL, Cognito-IDs) schreibt Terraform als `config.json` in den Bucket, damit ein Build für alle Umgebungen reicht.
 
 ## Konventionen

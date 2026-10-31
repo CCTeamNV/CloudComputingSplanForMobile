@@ -30,6 +30,12 @@ variable "throttle_burst_limit" {
   default     = 400
 }
 
+variable "cors_allow_origins" {
+  description = "Browser origins allowed to call the API (frontend URL, local dev server)."
+  type        = list(string)
+  default     = []
+}
+
 variable "log_retention_days" {
   type    = number
   default = 30

@@ -18,7 +18,7 @@ Deployments sollen reproduzierbar sein und keine langlebigen AWS-Access-Keys ben
 Option 3. Ablauf:
 
 - PR: Typecheck, Tests, `terraform plan` (dev) in der Job-Zusammenfassung des Workflows
-- Merge auf `main`: `terraform apply` dev, dann Frontend-Deploy (`s3 sync` + Invalidation)
+- Merge auf `main`: `terraform apply` dev, dann Frontend-Deploy (`s3 sync`, keine Invalidation nötig)
 - Tag `v*`: `terraform apply` prod nach manueller Freigabe über ein GitHub Environment
 
 Jeder Schritt läuft per Matrix gegen beide Accounts (ADR 0012). Die Rollennamen sind fest, die CI bildet die ARNs aus

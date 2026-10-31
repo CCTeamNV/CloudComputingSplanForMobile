@@ -10,6 +10,7 @@ cd infra/envs/dev
 terraform init -backend-config="bucket=splan-tfstate-$(aws sts get-caller-identity --query Account --output text)"
 terraform apply
 curl "$(terraform output -raw api_url)/health"
+open "$(terraform output -raw frontend_url)"   # Frontend kommt per CI-Deploy (s3 sync) in den Bucket
 ```
 
 Abbauen: `terraform destroy` (keine manuellen Schritte).
