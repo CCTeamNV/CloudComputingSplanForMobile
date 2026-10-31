@@ -23,8 +23,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run typecheck -w backend
-      - run: npm test -w backend
+      - run: npm run typecheck --workspaces
+      - run: npm test --workspaces
+      - run: npm run build -w frontend
+      - name: API types match docs/api.yaml
+        run: npm run gen:api -w frontend && git diff --exit-code frontend/src/api/schema.d.ts
 
   plan:
     if: github.event_name == 'pull_request'
