@@ -97,6 +97,13 @@ resource "aws_lambda_function" "fn" {
 resource "aws_apigatewayv2_api" "this" {
   name          = local.prefix
   protocol_type = "HTTP"
+
+  cors_configuration {
+    allow_origins = var.cors_allow_origins
+    allow_methods = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+    allow_headers = ["authorization", "content-type"]
+    max_age       = 3600
+  }
 }
 
 resource "aws_cloudwatch_log_group" "api_access" {
