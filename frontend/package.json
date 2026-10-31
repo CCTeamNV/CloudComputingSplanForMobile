@@ -8,7 +8,6 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "lint": "oxlint",
     "preview": "vite preview",
     "gen:api": "npx -y -p typescript@5.9.3 -p openapi-typescript@7.10.1 openapi-typescript ../docs/api.yaml -o src/api/schema.d.ts"
   },
@@ -31,7 +30,6 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "oxlint": "^1.89.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"

@@ -58,6 +58,8 @@ npm ci                      # alle Workspaces
 npm run build -w backend    # Lambdas bündeln (esbuild) -> von Terraform gezippt
 npm run dev -w frontend     # lokales Frontend gegen dev-API
 npm test --workspaces
+npm run lint                # oxlint (Warnungen = Fehler) + Prettier-Check
+npm run format              # Prettier schreibt
 ```
 
 Frontend-Deploy macht CI nach `terraform apply`: `aws s3 sync` (ohne `config.json`); `index.html` und `config.json` cacht

@@ -7,5 +7,13 @@
   ],
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "oxlint": "^1.90.0",
+    "prettier": "^3.9.10"
+  },
+  "scripts": {
+    "lint": "oxlint --deny-warnings && prettier --check .",
+    "format": "prettier --write ."
   }
 }
