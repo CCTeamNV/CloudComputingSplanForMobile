@@ -2,7 +2,8 @@
   "name": "splan-for-mobile",
   "private": true,
   "workspaces": [
-    "backend"
+    "backend",
+    "frontend"
   ],
   "engines": {
     "node": ">=22"
