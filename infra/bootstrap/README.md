@@ -50,3 +50,31 @@ gh api -X PUT repos/$REPO/environments/prod --input - <<'JSON'
 JSON
 gh api -X POST repos/$REPO/environments/prod/deployment-branch-policies -f name='v*' -f type=tag
 ```
+
+### Branch-Schutz für `main`
+
+PR mit 1 Approval, Status-Check `test` grün, kein Force-Push/Löschen. Repo-Admins dürfen PRs ohne Approval mergen
+(Notfall), aber nicht direkt pushen.
+
+```bash
+gh api -X POST repos/$REPO/rulesets --input - <<'JSON'
+{
+  "name": "main",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+  "bypass_actors": [{ "actor_type": "RepositoryRole", "actor_id": 5, "bypass_mode": "pull_request" }],
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "pull_request", "parameters": {
+        "required_approving_review_count": 1, "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": false, "require_last_push_approval": false,
+        "required_review_thread_resolution": false } },
+    { "type": "required_status_checks", "parameters": {
+        "strict_required_status_checks_policy": false,
+        "required_status_checks": [{ "context": "test", "integration_id": 15368 }] } }
+  ]
+}
+JSON
+```
