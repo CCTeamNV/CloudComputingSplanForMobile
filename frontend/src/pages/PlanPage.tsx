@@ -1,14 +1,21 @@
+import { useState } from 'react'
 import { mockSchedule } from '@/api/mock'
 import { cn } from '@/lib/utils'
 
 const time = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })
-const day = new Intl.DateTimeFormat('de-DE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Berlin' })
+const day = new Intl.DateTimeFormat('de-DE', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'Europe/Berlin',
+})
 
 export default function PlanPage() {
+  const [today] = useState(() => new Date())
   return (
     <section aria-labelledby="plan-heading">
       <h2 id="plan-heading" className="mb-3 text-base font-medium">
-        {day.format(new Date())}
+        {day.format(today)}
       </h2>
       <ul className="space-y-3">
         {mockSchedule.map((s) => (
@@ -21,7 +28,9 @@ export default function PlanPage() {
               Raum {s.room}
               {s.originalRoom && <span className="text-muted-foreground"> (statt {s.originalRoom})</span>}
             </p>
-            {s.cancelled && <p className="mt-1 text-sm font-medium text-destructive">Fällt aus{s.note && `: ${s.note}`}</p>}
+            {s.cancelled && (
+              <p className="mt-1 text-sm font-medium text-destructive">Fällt aus{s.note && `: ${s.note}`}</p>
+            )}
           </li>
         ))}
       </ul>

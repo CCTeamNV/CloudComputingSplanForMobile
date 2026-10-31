@@ -1,0 +1,9 @@
+# Markdown and the OpenAPI contract are formatted by hand (tables, flow mappings)
+*.md
+docs/
+package-lock.json
+**/dist/
+**/.terraform/
+infra/
+frontend/src/api/schema.d.ts
+frontend/components.json
