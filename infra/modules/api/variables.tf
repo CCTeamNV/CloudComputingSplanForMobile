@@ -9,13 +9,27 @@ variable "dist_dir" {
 }
 
 variable "functions" {
-  description = "Lambda per domain (ADR 0008) and the routes it serves. Domain permissions are attached in the env via role_names."
+  description = "Lambda per domain (ADR 0008) and the routes it serves (none for triggers). Domain permissions are attached in the env via role_names."
   type = map(object({
-    routes      = list(string)
+    routes      = optional(list(string), [])
     memory_size = optional(number, 256)
     timeout     = optional(number, 10)
     environment = optional(map(string), {})
   }))
+}
+
+variable "jwt_authorizer" {
+  description = "Cognito issuer URL and app client ids; every route not in public_routes requires a valid access token."
+  type = object({
+    issuer   = string
+    audience = list(string)
+  })
+}
+
+variable "public_routes" {
+  description = "Route keys reachable without a token, e.g. \"GET /health\"."
+  type        = list(string)
+  default     = []
 }
 
 variable "throttle_rate_limit" {

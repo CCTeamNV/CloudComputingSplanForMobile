@@ -14,3 +14,7 @@ output "role_names" {
   description = "Lambda role per function, for attaching domain-specific policies in the env."
   value       = { for name, role in aws_iam_role.fn : name => role.name }
 }
+
+output "function_arns" {
+  value = { for name, fn in aws_lambda_function.fn : name => fn.arn }
+}
