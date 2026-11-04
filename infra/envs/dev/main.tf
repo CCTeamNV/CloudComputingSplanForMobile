@@ -95,3 +95,12 @@ output "frontend_url" {
 output "frontend_bucket" {
   value = module.frontend.bucket
 }
+
+# Read by scripts/seed.ts
+output "table_name" {
+  value = module.data.table_name
+}
+
+output "user_pool_id" {
+  value = module.auth.user_pool_id
+}
