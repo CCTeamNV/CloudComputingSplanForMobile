@@ -32,6 +32,12 @@ variable "public_routes" {
   default     = []
 }
 
+variable "environment" {
+  description = "Environment variables for every function (e.g. TABLE_NAME); per-function values win."
+  type        = map(string)
+  default     = {}
+}
+
 variable "throttle_rate_limit" {
   description = "Steady-state requests per second for the whole API (protection instead of WAF, ADR 0011)."
   type        = number

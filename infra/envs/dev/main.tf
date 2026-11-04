@@ -47,6 +47,8 @@ module "api" {
   jwt_authorizer = { issuer = module.auth.issuer, audience = [module.auth.client_id] }
   public_routes  = ["GET /health", "GET /ical/{token}"]
 
+  environment = { TABLE_NAME = module.data.table_name }
+
   throttle_rate_limit  = 200
   throttle_burst_limit = 400
   cors_allow_origins   = [module.frontend.url, "http://localhost:5173"]
@@ -58,6 +60,15 @@ module "auth" {
   env                   = "dev"
   pre_signup_lambda_arn = module.api.function_arns["pre-signup"]
   callback_urls         = ["${module.frontend.url}/", "http://localhost:5173/"]
+}
+
+module "data" {
+  source = "../../modules/data"
+
+  env = "dev"
+
+  # DynamoDB actions per Lambda, e.g. catalog = { role = module.api.role_names.catalog, actions = ["dynamodb:Query", "dynamodb:GetItem"] }
+  access = {}
 }
 
 module "frontend" {
