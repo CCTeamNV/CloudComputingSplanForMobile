@@ -40,13 +40,26 @@ module "api" {
 
   functions = {
     health = { routes = ["GET /health"] }
+    # Cognito trigger, no routes and no permissions besides logs/X-Ray. loadtest.example.com: k6 users (seeded without mail).
+    pre-signup = { environment = { ALLOWED_DOMAINS = "hs-heilbronn.de,loadtest.example.com" } }
   }
+
+  jwt_authorizer = { issuer = module.auth.issuer, audience = [module.auth.client_id] }
+  public_routes  = ["GET /health", "GET /ical/{token}"]
 
   environment = { TABLE_NAME = module.data.table_name }
 
   throttle_rate_limit  = 200
   throttle_burst_limit = 400
   cors_allow_origins   = [module.frontend.url, "http://localhost:5173"]
+}
+
+module "auth" {
+  source = "../../modules/auth"
+
+  env                   = "dev"
+  pre_signup_lambda_arn = module.api.function_arns["pre-signup"]
+  callback_urls         = ["${module.frontend.url}/", "http://localhost:5173/"]
 }
 
 module "data" {
@@ -61,8 +74,14 @@ module "data" {
 module "frontend" {
   source = "../../modules/frontend"
 
-  env    = "dev"
-  config = { apiUrl = module.api.api_url }
+  env = "dev"
+  config = {
+    apiUrl           = module.api.api_url
+    region           = "eu-central-1"
+    userPoolId       = module.auth.user_pool_id
+    userPoolClientId = module.auth.client_id
+    authDomain       = module.auth.domain_url
+  }
 }
 
 output "api_url" {

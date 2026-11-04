@@ -5,6 +5,9 @@ locals {
   routes = merge([
     for name, fn in var.functions : { for route in fn.routes : route => name }
   ]...)
+
+  # Functions behind the API; the rest are triggers (e.g. Cognito pre-signup).
+  routed = { for name, fn in var.functions : name => fn if length(fn.routes) > 0 }
 }
 
 # --- Lambda functions (one role each, ADR 0008) ---
@@ -136,12 +139,25 @@ resource "aws_apigatewayv2_stage" "default" {
 }
 
 resource "aws_apigatewayv2_integration" "fn" {
-  for_each = var.functions
+  for_each = local.routed
 
   api_id                 = aws_apigatewayv2_api.this.id
   integration_type       = "AWS_PROXY"
   integration_uri        = aws_lambda_function.fn[each.key].invoke_arn
   payload_format_version = "2.0"
+}
+
+# Validates the Cognito access token (issuer, client_id); roles are checked in the Lambda (ADR 0006).
+resource "aws_apigatewayv2_authorizer" "jwt" {
+  api_id           = aws_apigatewayv2_api.this.id
+  name             = "cognito"
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+
+  jwt_configuration {
+    issuer   = var.jwt_authorizer.issuer
+    audience = var.jwt_authorizer.audience
+  }
 }
 
 resource "aws_apigatewayv2_route" "this" {
@@ -150,10 +166,13 @@ resource "aws_apigatewayv2_route" "this" {
   api_id    = aws_apigatewayv2_api.this.id
   route_key = each.key
   target    = "integrations/${aws_apigatewayv2_integration.fn[each.value].id}"
+
+  authorization_type = contains(var.public_routes, each.key) ? "NONE" : "JWT"
+  authorizer_id      = contains(var.public_routes, each.key) ? null : aws_apigatewayv2_authorizer.jwt.id
 }
 
 resource "aws_lambda_permission" "api" {
-  for_each = var.functions
+  for_each = local.routed
 
   statement_id  = "AllowApiGatewayInvoke"
   action        = "lambda:InvokeFunction"
