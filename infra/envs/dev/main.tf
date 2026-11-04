@@ -42,9 +42,20 @@ module "api" {
     health = { routes = ["GET /health"] }
   }
 
+  environment = { TABLE_NAME = module.data.table_name }
+
   throttle_rate_limit  = 200
   throttle_burst_limit = 400
   cors_allow_origins   = [module.frontend.url, "http://localhost:5173"]
+}
+
+module "data" {
+  source = "../../modules/data"
+
+  env = "dev"
+
+  # DynamoDB actions per Lambda, e.g. catalog = { role = module.api.role_names.catalog, actions = ["dynamodb:Query", "dynamodb:GetItem"] }
+  access = {}
 }
 
 module "frontend" {

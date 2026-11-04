@@ -77,7 +77,7 @@ resource "aws_lambda_function" "fn" {
   timeout          = each.value.timeout
 
   environment {
-    variables = merge({ NODE_OPTIONS = "--enable-source-maps" }, each.value.environment)
+    variables = merge({ NODE_OPTIONS = "--enable-source-maps" }, var.environment, each.value.environment)
   }
 
   tracing_config {
