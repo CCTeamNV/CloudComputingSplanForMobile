@@ -5,6 +5,10 @@ resource "aws_dynamodb_table" "this" {
   hash_key     = "PK"
   range_key    = "SK"
 
+  # Feeds the catalog publisher (ADR 0013); Lambda reads from the stream at no charge.
+  stream_enabled   = true
+  stream_view_type = "NEW_AND_OLD_IMAGES"
+
   attribute {
     name = "PK"
     type = "S"
@@ -71,4 +75,47 @@ resource "aws_iam_role_policy" "access" {
   name   = "dynamodb"
   role   = each.value.role
   policy = data.aws_iam_policy_document.access[each.key].json
+}
+
+# --- Stream consumer: the catalog publisher (ADR 0013) ---
+
+data "aws_iam_policy_document" "stream" {
+  count = var.stream_consumer == null ? 0 : 1
+
+  statement {
+    actions   = ["dynamodb:DescribeStream", "dynamodb:GetRecords", "dynamodb:GetShardIterator", "dynamodb:ListStreams"]
+    resources = ["${aws_dynamodb_table.this.arn}/stream/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "stream" {
+  count = var.stream_consumer == null ? 0 : 1
+
+  name   = "dynamodb-stream"
+  role   = var.stream_consumer.role
+  policy = data.aws_iam_policy_document.stream[0].json
+}
+
+resource "aws_lambda_event_source_mapping" "stream" {
+  count = var.stream_consumer == null ? 0 : 1
+
+  event_source_arn  = aws_dynamodb_table.this.stream_arn
+  function_name     = var.stream_consumer.function_name
+  starting_position = "LATEST" # existing data: run the rebuild once (backend/README.md)
+
+  # A few seconds of batching keeps imports from rewriting the same file per item; well within the ~2 min target.
+  batch_size                         = 100
+  maximum_batching_window_in_seconds = 5
+
+  # Retries are safe (the function rewrites from current state); a lost batch is repaired by the rebuild.
+  maximum_retry_attempts         = 3
+  bisect_batch_on_function_error = true
+
+  filter_criteria {
+    filter {
+      pattern = var.stream_consumer.filter_pattern
+    }
+  }
+
+  depends_on = [aws_iam_role_policy.stream]
 }

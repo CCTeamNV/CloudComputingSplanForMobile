@@ -24,3 +24,13 @@ variable "access" {
     error_message = "Only explicit dynamodb:<Action> entries, no wildcards and no Scan (ADR 0003)."
   }
 }
+
+variable "stream_consumer" {
+  description = "Lambda triggered by the table stream, with an event filter pattern (JSON). null = no consumer."
+  type = object({
+    function_name  = string
+    role           = string
+    filter_pattern = string
+  })
+  default = null
+}

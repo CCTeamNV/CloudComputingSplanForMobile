@@ -1,7 +1,7 @@
 // DynamoDB access for the patterns in ADR 0003. Query only, never Scan.
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, paginateQuery, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
-import type { Course, Session } from './api.ts'
+import { DynamoDBDocumentClient, GetCommand, paginateQuery, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
+import type { Course, Program, Session } from './api.ts'
 import { keys, sessionRange, SESSION_PREFIX, SUB_PREFIX } from './keys.ts'
 
 export const db = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
@@ -48,6 +48,33 @@ export const toSession = (item: Item): Session => ({
   note: (item.note as string | undefined) ?? null,
   updatedAt: item.updatedAt as string,
 })
+
+export const toProgram = (item: Item): Program => ({
+  id: (item.SK as string).slice('PROGRAM#'.length),
+  name: item.name as string,
+  semesters: item.semesters as number,
+})
+
+/** All study programs. */
+export const listPrograms = async (): Promise<Program[]> =>
+  (
+    await queryAll({ KeyConditionExpression: 'PK = :pk', ExpressionAttributeValues: { ':pk': keys.programs().PK } })
+  ).map(toProgram)
+
+/** A course, or undefined if it does not exist. */
+export const getCourse = async (courseId: string): Promise<Course | undefined> => {
+  const { Item } = await db.send(new GetCommand({ TableName: tableName(), Key: keys.course(courseId) }))
+  return Item && toCourse(Item)
+}
+
+/** All sessions of a course, sorted by start. */
+export const allSessions = async (courseId: string): Promise<Session[]> =>
+  (
+    await queryAll({
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :session)',
+      ExpressionAttributeValues: { ':pk': keys.course(courseId).PK, ':session': SESSION_PREFIX },
+    })
+  ).map(toSession)
 
 /** Courses of a program semester (GSI1). */
 export const coursesByProgram = async (programId: string, semester: number): Promise<Course[]> =>
