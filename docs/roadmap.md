@@ -24,7 +24,7 @@ Projekt:
 
 - [ ] B: Modul `auth` (Cognito, Pre-Sign-up-Lambda, Gruppen)
 - [ ] B: Modul `data` (DynamoDB), Seed-Skript (Studiengang SEB, Admin-/Dozenten-/Testuser)
-- [ ] B: Lambdas `catalog` und `student` (Abos, persönlicher Plan)
+- [ ] B: Lambda `catalog` als Publisher statischer JSON-Dateien, Lambda `student` (Abos, signierte URLs; ADR 0013)
 - [ ] A: Sign-up/Sign-in, Kurssuche mit Filter, Abonnieren, Tages- und Wochenansicht
 
 ## M2: Pflege, Änderungen, iCal (bis 29.11.)
@@ -64,4 +64,3 @@ Nur Fehlerbehebung. Nice-to-haves (Offline-Cache, Benachrichtigungen) nur, wenn 
 
 - Offline-Cache mit `vite-plugin-pwa`
 - Benachrichtigung bei Ausfall abonnierter Kurse (E-Mail via SES oder Web-Push)
-- Öffentliche Planansicht ohne Login

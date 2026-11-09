@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/programs": {
+    "/catalog/programs.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -12,7 +12,7 @@ export interface paths {
             cookie?: never;
         };
         /** List study programs (for the filter) */
-        get: operations["listPrograms"];
+        get: operations["getProgramsFile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -21,15 +21,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/courses": {
+    "/catalog/courses/{programId}/{semester}.json": {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                programId: string;
+                semester: number;
+            };
             cookie?: never;
         };
         /** List courses of a program and semester */
-        get: operations["listCourses"];
+        get: operations["getCoursesFile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38,7 +41,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/courses/{courseId}": {
+    "/catalog/sessions/{courseId}.json": {
         parameters: {
             query?: never;
             header?: never;
@@ -47,44 +50,8 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Get one course */
-        get: operations["getCourse"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/courses/{courseId}/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                courseId: components["parameters"]["CourseId"];
-            };
-            cookie?: never;
-        };
-        /** Sessions of a course in a date range */
-        get: operations["listCourseSessions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me/schedule": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Personal schedule (sessions of all subscribed courses) */
-        get: operations["getMySchedule"];
+        /** All sessions of a course; the client builds the personal schedule from these files */
+        get: operations["getCourseSessionsFile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -100,7 +67,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Subscribed courses */
+        /** Subscribed courses and the access parameters for the static files */
         get: operations["listMySubscriptions"];
         put?: never;
         post?: never;
@@ -388,6 +355,25 @@ export interface components {
             /** @description Display name, stored on the course so no user lookup is needed when reading */
             lecturerName?: string | null;
         };
+        /** @description CloudFront signed URL parameters, valid for all files under `/catalog/` (ADR 0013). */
+        CatalogAccess: {
+            /** @description URL query string: `Policy=...&Signature=...&Key-Pair-Id=...` */
+            query: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        /** @description Course as published in the static files, without the internal `lecturerId` (ADR 0013). */
+        PublicCourse: {
+            /** @example seb-7-cloud-computing */
+            id: string;
+            /** @example Cloud Computing */
+            name: string;
+            /** @example CC */
+            shortName?: string;
+            programId: string;
+            semester: number;
+            lecturerName?: string | null;
+        };
         Course: components["schemas"]["CourseInput"] & {
             /** @example seb-7-cloud-computing */
             id: string;
@@ -414,7 +400,8 @@ export interface components {
             /** @example Krankheitsbedingt */
             note?: string | null;
         };
-        Session: components["schemas"]["SessionInput"] & {
+        /** @description Session as published in the static files, without the free-text `note` (ADR 0013). */
+        PublicSession: components["schemas"]["SessionInput"] & {
             id: string;
             courseId: string;
             /** @description Denormalized for the schedule view */
@@ -422,9 +409,11 @@ export interface components {
             cancelled: boolean;
             /** @description Set when the room was changed after creation; UI marks the session as changed */
             originalRoom?: string | null;
-            note?: string | null;
             /** Format: date-time */
             updatedAt: string;
+        };
+        Session: components["schemas"]["PublicSession"] & {
+            note?: string | null;
         };
         SessionList: {
             items: components["schemas"]["Session"][];
@@ -479,9 +468,6 @@ export interface components {
         CourseId: string;
         /** @description `<start as yyyyMMddTHHmmZ (UTC)>-<random>`, sortable by start (ADR 0003) */
         SessionId: string;
-        From: string;
-        /** @description Inclusive; at most 31 days after `from`. */
-        To: string;
     };
     requestBodies: never;
     headers: never;
@@ -489,7 +475,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    listPrograms: {
+    getProgramsFile: {
         parameters: {
             query?: never;
             header?: never;
@@ -509,17 +495,16 @@ export interface operations {
                     };
                 };
             };
-            401: components["responses"]["Unauthorized"];
         };
     };
-    listCourses: {
+    getCoursesFile: {
         parameters: {
-            query: {
+            query?: never;
+            header?: never;
+            path: {
                 programId: string;
                 semester: number;
             };
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -531,15 +516,13 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        items: components["schemas"]["Course"][];
+                        items: components["schemas"]["PublicCourse"][];
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
         };
     };
-    getCourse: {
+    getCourseSessionsFile: {
         parameters: {
             query?: never;
             header?: never;
@@ -550,72 +533,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description OK, sorted by start; an empty `items` list if the course has no sessions */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Course"];
+                    "application/json": {
+                        items: components["schemas"]["PublicSession"][];
+                    };
                 };
             };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    listCourseSessions: {
-        parameters: {
-            query: {
-                from: components["parameters"]["From"];
-                /** @description Inclusive; at most 31 days after `from`. */
-                to: components["parameters"]["To"];
-            };
-            header?: never;
-            path: {
-                courseId: components["parameters"]["CourseId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK, sorted by start */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SessionList"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    getMySchedule: {
-        parameters: {
-            query: {
-                from: components["parameters"]["From"];
-                /** @description Inclusive; at most 31 days after `from`. */
-                to: components["parameters"]["To"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK, sorted by start */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SessionList"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
         };
     };
     listMySubscriptions: {
@@ -635,6 +563,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         items: components["schemas"]["Course"][];
+                        catalogAccess: components["schemas"]["CatalogAccess"];
                     };
                 };
             };

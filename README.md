@@ -49,7 +49,6 @@ flowchart LR
 
     subgraph API
         APIGW["API Gateway HTTP API<br/>JWT-Authorizer, Throttling"]
-        LC["λ catalog"]
         LS["λ student"]
         LL["λ lecturer"]
         LA["λ admin"]
@@ -57,6 +56,7 @@ flowchart LR
     end
 
     DDB[("DynamoDB<br/>on-demand, Single Table")]
+    LC["λ catalog<br/>schreibt JSON-Dateien"]
 
     subgraph Observability
         CW["CloudWatch<br/>Logs, Metriken, Dashboard"]
@@ -69,13 +69,15 @@ flowchart LR
         ECR[("ECR")]
     end
 
-    U --> CF --> S3F
+    U -- "App und /catalog (signierte URL)" --> CF --> S3F
     U -- "Sign-up / Sign-in" --> COG
     COG -.-> PRE
     U -- "HTTPS + JWT" --> APIGW
     CAL -- "/ical/token" --> APIGW
-    APIGW --> LC & LS & LL & LA & LI
-    LC & LS & LL & LA & LI --> DDB
+    APIGW --> LS & LL & LA & LI
+    LS & LL & LA & LI --> DDB
+    DDB -. "Stream" .-> LC
+    LC -- "bei Änderung" --> S3F
     LS & LA -.-> COG
     APIGW & LC & LS & LL & LA & LI -.-> CW
     LC & LS & LL & LA & LI -.-> XR
@@ -153,6 +155,8 @@ Cognito User Pool ([ADR 0006](docs/decisions/0006-cognito-groups-authorization.m
 2. Lambda: prüft die Gruppe aus `cognito:groups` und bei Dozierenden den Besitz (`course.lecturerId == sub`).
 3. iCal: Kalender-Apps können kein JWT senden → geheime Token-URL pro User, nur als Hash gespeichert, neu erzeugbar
    ([ADR 0007](docs/decisions/0007-ical-token-urls.md)).
+4. Kurse und Termine: statische Dateien unter `/catalog/`, CloudFront verlangt eine signierte URL. Sie gilt 1 Stunde und
+   wird nur an angemeldete Nutzer ausgestellt ([ADR 0013](docs/decisions/0013-static-catalog-and-sessions.md)).
 
 ### Zugriff auf die AWS-Accounts
 

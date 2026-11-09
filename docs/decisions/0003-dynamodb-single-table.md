@@ -31,7 +31,8 @@ DynamoDB on-demand, eine Tabelle:
 nach Start sortiert, und Zeitraumabfragen laufen per `between` auf dem SK. Ein Termin ist geändert, wenn
 `originalRoom` gesetzt ist; abgesagt, wenn `cancelled = true`. `courseName` ist denormalisiert für die Planansicht.
 
-Persönlicher Plan: Abos des Users abfragen, dann je Kurs die Termine im Zeitraum.
+Persönlicher Plan: Abos des Users abfragen, dann je Kurs die Termine im Zeitraum. Seit ADR 0013 geschieht das im
+Client über statische Termindateien, nicht mehr per DynamoDB-Abfrage.
 Dozentenansicht: Kurse über GSI2 (`LECTURER#<sub>`).
 
 ## Konsequenzen
