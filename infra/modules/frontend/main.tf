@@ -16,6 +16,12 @@ variable "config" {
   type        = map(string)
 }
 
+variable "catalog_writer_role" {
+  description = "IAM role name of the catalog publisher; may write and delete only under catalog/ (ADR 0013)."
+  type        = string
+  default     = null
+}
+
 data "aws_caller_identity" "current" {}
 
 locals {
@@ -72,6 +78,23 @@ resource "aws_s3_object" "config" {
   content       = jsonencode(var.config)
   content_type  = "application/json"
   cache_control = "no-cache"
+}
+
+data "aws_iam_policy_document" "catalog_writer" {
+  count = var.catalog_writer_role == null ? 0 : 1
+
+  statement {
+    actions   = ["s3:PutObject", "s3:DeleteObject"]
+    resources = ["${aws_s3_bucket.site.arn}/catalog/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "catalog_writer" {
+  count = var.catalog_writer_role == null ? 0 : 1
+
+  name   = "catalog-files"
+  role   = var.catalog_writer_role
+  policy = data.aws_iam_policy_document.catalog_writer[0].json
 }
 
 # --- CloudFront ---

@@ -42,6 +42,8 @@ module "api" {
     health = { routes = ["GET /health"] }
     # Cognito trigger, no routes and no permissions besides logs/X-Ray. loadtest.example.com: k6 users (seeded without mail).
     pre-signup = { environment = { ALLOWED_DOMAINS = "hs-heilbronn.de,loadtest.example.com" } }
+    # Stream trigger, writes /catalog/*.json (ADR 0013); the rebuild of all files needs more than 10 s.
+    catalog = { timeout = 120, environment = { CATALOG_BUCKET = module.frontend.bucket } }
   }
 
   jwt_authorizer = { issuer = module.auth.issuer, audience = [module.auth.client_id] }
@@ -67,14 +69,26 @@ module "data" {
 
   env = "dev"
 
-  # DynamoDB actions per Lambda, e.g. catalog = { role = module.api.role_names.catalog, actions = ["dynamodb:Query", "dynamodb:GetItem"] }
-  access = {}
+  # DynamoDB actions per Lambda (ADR 0008)
+  access = {
+    catalog = { role = module.api.role_names.catalog, actions = ["dynamodb:Query", "dynamodb:GetItem"] }
+  }
+
+  # Only catalog data reaches the publisher, never USER# or ICAL# items.
+  stream_consumer = {
+    function_name = module.api.function_names.catalog
+    role          = module.api.role_names.catalog
+    filter_pattern = jsonencode({
+      dynamodb = { Keys = { PK = { S = ["PROGRAMS", { prefix = "COURSE#" }] } } }
+    })
+  }
 }
 
 module "frontend" {
   source = "../../modules/frontend"
 
-  env = "dev"
+  env                 = "dev"
+  catalog_writer_role = module.api.role_names.catalog
   config = {
     apiUrl           = module.api.api_url
     region           = "eu-central-1"
