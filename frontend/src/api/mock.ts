@@ -2,7 +2,7 @@ import type { components } from './schema'
 
 export type Session = components['schemas']['Session']
 
-// shortcut: static mock data matching docs/api.yaml, replace with getMySchedule in the plan view issue.
+// shortcut: static mock data matching docs/api.yaml, replace with the static session files (ADR 0013) in the plan view issue.
 function today(hour: number, minute = 0): string {
   const d = new Date()
   d.setHours(hour, minute, 0, 0)

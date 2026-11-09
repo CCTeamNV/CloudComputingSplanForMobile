@@ -7,9 +7,9 @@ info:
 
     Conventions:
     - JSON, camelCase field names.
-    - Timestamps are ISO 8601 with offset (e.g. `2026-11-02T08:00:00+01:00`); `from`/`to` query
-      parameters are dates (`YYYY-MM-DD`) interpreted in `Europe/Berlin`, `to` inclusive.
+    - Timestamps are ISO 8601 with offset (e.g. `2026-11-02T08:00:00+01:00`).
     - Every route requires a Cognito access token (`Authorization: Bearer <jwt>`) except `/ical/{token}`.
+      The static files under `/catalog/` need a CloudFront signature instead (ADR 0013).
     - Role checks (`cognito:groups`) and ownership checks happen in the Lambda (ADR 0006).
     - Errors always use the `Error` schema.
 servers:
@@ -22,8 +22,12 @@ security:
   - cognito: []
 
 tags:
-  - name: catalog
-    description: Lambda `catalog`, any signed-in user
+  - name: static
+    description: |
+      Static JSON on CloudFront, written by Lambda `catalog` on data changes (ADR 0013), cached for up to
+      60 s. Append `catalogAccess.query` from `GET /me/subscriptions` to the URL. CloudFront answers a missing
+      file or an invalid or expired signature with `index.html` and status 200. On a non-JSON response, fetch
+      `catalogAccess` again and retry once. The files contain no lecturer data and no notes.
   - name: student
     description: Lambda `student`, the signed-in user's own data
   - name: lecturer
@@ -34,11 +38,18 @@ tags:
     description: Lambda `ical`, no JWT, secret token in URL (ADR 0007)
 
 paths:
-  /programs:
+  /catalog/programs.json:
+    servers:
+      - url: https://{distributionDomain}
+        variables:
+          distributionDomain:
+            default: replace-me.cloudfront.net
     get:
-      tags: [catalog]
+      tags: [static]
       summary: List study programs (for the filter)
-      operationId: listPrograms
+      operationId: getProgramsFile
+      security:
+        - catalogSignature: []
       responses:
         "200":
           description: OK
@@ -51,22 +62,28 @@ paths:
                   items:
                     type: array
                     items: { $ref: "#/components/schemas/Program" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
 
-  /courses:
+  /catalog/courses/{programId}/{semester}.json:
+    servers:
+      - url: https://{distributionDomain}
+        variables:
+          distributionDomain:
+            default: replace-me.cloudfront.net
+    parameters:
+      - name: programId
+        in: path
+        required: true
+        schema: { type: string }
+      - name: semester
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1, maximum: 10 }
     get:
-      tags: [catalog]
+      tags: [static]
       summary: List courses of a program and semester
-      operationId: listCourses
-      parameters:
-        - name: programId
-          in: query
-          required: true
-          schema: { type: string }
-        - name: semester
-          in: query
-          required: true
-          schema: { type: integer, minimum: 1, maximum: 10 }
+      operationId: getCoursesFile
+      security:
+        - catalogSignature: []
       responses:
         "200":
           description: OK
@@ -78,67 +95,39 @@ paths:
                 properties:
                   items:
                     type: array
-                    items: { $ref: "#/components/schemas/Course" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
+                    items: { $ref: "#/components/schemas/PublicCourse" }
 
-  /courses/{courseId}:
+  /catalog/sessions/{courseId}.json:
+    servers:
+      - url: https://{distributionDomain}
+        variables:
+          distributionDomain:
+            default: replace-me.cloudfront.net
     parameters:
       - $ref: "#/components/parameters/CourseId"
     get:
-      tags: [catalog]
-      summary: Get one course
-      operationId: getCourse
+      tags: [static]
+      summary: All sessions of a course; the client builds the personal schedule from these files
+      operationId: getCourseSessionsFile
+      security:
+        - catalogSignature: []
       responses:
         "200":
-          description: OK
+          description: OK, sorted by start; an empty `items` list if the course has no sessions
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Course" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-  /courses/{courseId}/sessions:
-    parameters:
-      - $ref: "#/components/parameters/CourseId"
-    get:
-      tags: [catalog]
-      summary: Sessions of a course in a date range
-      operationId: listCourseSessions
-      parameters:
-        - $ref: "#/components/parameters/From"
-        - $ref: "#/components/parameters/To"
-      responses:
-        "200":
-          description: OK, sorted by start
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/SessionList" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-  /me/schedule:
-    get:
-      tags: [student]
-      summary: Personal schedule (sessions of all subscribed courses)
-      operationId: getMySchedule
-      parameters:
-        - $ref: "#/components/parameters/From"
-        - $ref: "#/components/parameters/To"
-      responses:
-        "200":
-          description: OK, sorted by start
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/SessionList" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/PublicSession" }
 
   /me/subscriptions:
     get:
       tags: [student]
-      summary: Subscribed courses
+      summary: Subscribed courses and the access parameters for the static files
       operationId: listMySubscriptions
       responses:
         "200":
@@ -147,11 +136,12 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [items]
+                required: [items, catalogAccess]
                 properties:
                   items:
                     type: array
                     items: { $ref: "#/components/schemas/Course" }
+                  catalogAccess: { $ref: "#/components/schemas/CatalogAccess" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /me/subscriptions/{courseId}:
@@ -470,6 +460,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Cognito access token, validated by the API Gateway JWT authorizer.
+    catalogSignature:
+      type: apiKey
+      in: query
+      name: Signature
+      description: CloudFront signed URL parameters (`Policy`, `Signature`, `Key-Pair-Id`), see `CatalogAccess`.
 
   parameters:
     CourseId:
@@ -483,17 +478,6 @@ components:
       required: true
       description: "`<start as yyyyMMddTHHmmZ (UTC)>-<random>`, sortable by start (ADR 0003)"
       schema: { type: string, pattern: "^[0-9]{8}T[0-9]{4}Z-[a-z0-9]{6}$", examples: ["20261102T0700Z-k3x9qa"] }
-    From:
-      name: from
-      in: query
-      required: true
-      schema: { type: string, format: date }
-    To:
-      name: to
-      in: query
-      required: true
-      description: Inclusive; at most 31 days after `from`.
-      schema: { type: string, format: date }
 
   responses:
     BadRequest:
@@ -556,6 +540,25 @@ components:
           maxLength: 120
           description: Display name, stored on the course so no user lookup is needed when reading
 
+    CatalogAccess:
+      type: object
+      description: CloudFront signed URL parameters, valid for all files under `/catalog/` (ADR 0013).
+      required: [query, expiresAt]
+      properties:
+        query: { type: string, description: "URL query string: `Policy=...&Signature=...&Key-Pair-Id=...`" }
+        expiresAt: { type: string, format: date-time }
+
+    PublicCourse:
+      type: object
+      description: Course as published in the static files, without lecturer data (ADR 0013).
+      required: [id, name, programId, semester]
+      properties:
+        id: { type: string, examples: ["seb-7-cloud-computing"] }
+        name: { type: string, examples: ["Cloud Computing"] }
+        shortName: { type: string, examples: ["CC"] }
+        programId: { type: string }
+        semester: { type: integer, minimum: 1, maximum: 10 }
+
     Course:
       allOf:
         - $ref: "#/components/schemas/CourseInput"
@@ -584,7 +587,8 @@ components:
         room: { type: string, minLength: 1, maxLength: 40 }
         note: { type: [string, "null"], maxLength: 200, examples: ["Krankheitsbedingt"] }
 
-    Session:
+    PublicSession:
+      description: Session as published in the static files, without the free-text `note` (ADR 0013).
       allOf:
         - $ref: "#/components/schemas/SessionInput"
         - type: object
@@ -597,8 +601,14 @@ components:
             originalRoom:
               type: [string, "null"]
               description: Set when the room was changed after creation; UI marks the session as changed
-            note: { type: [string, "null"] }
             updatedAt: { type: string, format: date-time }
+
+    Session:
+      allOf:
+        - $ref: "#/components/schemas/PublicSession"
+        - type: object
+          properties:
+            note: { type: [string, "null"] }
 
     SessionList:
       type: object
