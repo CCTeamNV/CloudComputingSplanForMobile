@@ -19,8 +19,13 @@ await Promise.all(
       sourcemap: true,
       // The Lambda runtime ships AWS SDK v3.
       external: ['@aws-sdk/*'],
+      // CommonJS dependencies (aws-xray-sdk-core via Powertools Tracer) call require(), which ESM lacks.
+      banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" },
     }),
   ),
 )
+
+// Load every bundle once, so module-level failures break the build instead of the Lambda.
+for (const name of functions) await import(new URL(`dist/${name}/index.mjs`, import.meta.url).href)
 
 console.log(`built: ${functions.join(', ')}`)
