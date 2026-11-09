@@ -362,7 +362,7 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
-        /** @description Course as published in the static files, without lecturer data (ADR 0013). */
+        /** @description Course as published in the static files, without the internal `lecturerId` (ADR 0013). */
         PublicCourse: {
             /** @example seb-7-cloud-computing */
             id: string;
@@ -372,6 +372,7 @@ export interface components {
             shortName?: string;
             programId: string;
             semester: number;
+            lecturerName?: string | null;
         };
         Course: components["schemas"]["CourseInput"] & {
             /** @example seb-7-cloud-computing */

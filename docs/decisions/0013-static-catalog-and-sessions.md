@@ -1,6 +1,6 @@
 # 0013: Katalog und Termine als statische JSON-Dateien über CloudFront
 
-- Status: vorgeschlagen
+- Status: akzeptiert
 - Datum: 2026-11-09
 
 ## Kontext
@@ -75,7 +75,7 @@ enthalten die Dateien nur, was der Plan braucht:
 |---|---|---|
 | `lecturerId` | nein | interne Cognito-ID |
 | `note` | nein | Freitext, kann Personenbezug haben (Beispiel im Vertrag: „Krankheitsbedingt“) |
-| `lecturerName` | nein, im Review zu bestätigen | Datensparsamkeit; im MVP nicht erforderlich |
+| `lecturerName` | ja | wird in Kurssuche und Plan angezeigt, Zugriff nur mit Login |
 
 Über die API bleiben `/me/subscriptions*`, `/me/ical-token`, `/me`, `/lecturer/*`, `/admin/*` und `/ical/{token}`.
 Die Lambda `ical` liest weiter aus DynamoDB, ihr Feed ist privat (ADR 0007).

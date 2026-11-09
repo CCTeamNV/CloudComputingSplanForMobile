@@ -27,7 +27,7 @@ tags:
       Static JSON on CloudFront, written by Lambda `catalog` on data changes (ADR 0013), cached for up to
       60 s. Append `catalogAccess.query` from `GET /me/subscriptions` to the URL. CloudFront answers a missing
       file or an invalid or expired signature with `index.html` and status 200. On a non-JSON response, fetch
-      `catalogAccess` again and retry once. The files contain no lecturer data and no notes.
+      `catalogAccess` again and retry once. The files contain no lecturer IDs and no notes.
   - name: student
     description: Lambda `student`, the signed-in user's own data
   - name: lecturer
@@ -550,7 +550,7 @@ components:
 
     PublicCourse:
       type: object
-      description: Course as published in the static files, without lecturer data (ADR 0013).
+      description: Course as published in the static files, without the internal `lecturerId` (ADR 0013).
       required: [id, name, programId, semester]
       properties:
         id: { type: string, examples: ["seb-7-cloud-computing"] }
@@ -558,6 +558,7 @@ components:
         shortName: { type: string, examples: ["CC"] }
         programId: { type: string }
         semester: { type: integer, minimum: 1, maximum: 10 }
+        lecturerName: { type: [string, "null"], maxLength: 120 }
 
     Course:
       allOf:

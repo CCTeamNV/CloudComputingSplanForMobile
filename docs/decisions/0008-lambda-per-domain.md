@@ -19,8 +19,8 @@ Option 3:
 
 | Lambda | Routen | Rechte |
 |---|---|---|
-| `catalog` | `GET /programs`, `GET /courses*` | DynamoDB Query/GetItem |
-| `student` | `/me*` (Abos, Plan, iCal-Token, Account löschen) | DynamoDB Read/Write auf eigene Items, `cognito-idp:AdminDeleteUser` |
+| `catalog` | keine, DynamoDB-Stream-Trigger, schreibt `/catalog/*` (ADR 0013) | DynamoDB Query/GetItem, `s3:PutObject/DeleteObject` auf `catalog/*` |
+| `student` | `/me*` (Abos, iCal-Token, Account löschen) | DynamoDB Read/Write auf eigene Items, `cognito-idp:AdminDeleteUser`, `ssm:GetParameter` auf den Signaturschlüssel (ADR 0013) |
 | `lecturer` | `GET /lecturer/courses`, `PATCH /lecturer/courses/{id}/sessions/{id}` | DynamoDB Query (GSI2)/GetItem/UpdateItem |
 | `admin` | `/admin/*` | DynamoDB CRUD, `cognito-idp:AdminAddUserToGroup/RemoveUserFromGroup/ListUsers` |
 | `ical` | `GET /ical/{token}` | DynamoDB GetItem/Query |

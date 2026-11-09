@@ -21,6 +21,8 @@ iCal-Abo, Admin-UI (Kurse/Termine/Rollen), Dozent sagt eigene Termine ab bzw. ä
 - Frontend: React-PWA, Vite, TypeScript, Tailwind, shadcn/ui; S3 + CloudFront (OAC)
 - Backend: API Gateway HTTP API + Lambda (Node.js, TypeScript, esbuild), Powertools for AWS Lambda (TS)
 - Daten: DynamoDB on-demand, Single-Table-Design (`docs/decisions/0003-dynamodb-single-table.md`)
+- Kurse und Termine: statische JSON-Dateien unter `/catalog/` auf CloudFront, erzeugt per DynamoDB Stream, Zugriff per
+  signierter URL (`docs/decisions/0013-static-catalog-and-sessions.md`)
 - Auth: Cognito User Pool; Gruppen `lecturer`, `admin`; ohne Gruppe = Student
 - Monitoring: CloudWatch Logs/Metrics/Dashboard, X-Ray, SNS-E-Mail-Alarme
 - Lasttest: k6 als Container auf ECS Fargate (on-demand)
@@ -62,7 +64,7 @@ npm run lint                # oxlint (Warnungen = Fehler) + Prettier-Check
 npm run format              # Prettier schreibt
 ```
 
-Frontend-Deploy macht CI nach `terraform apply`: `aws s3 sync` (ohne `config.json`); `index.html` und `config.json` cacht
+Frontend-Deploy macht CI nach `terraform apply`: `aws s3 sync` (ohne `config.json`, nie mit `--delete`, sonst fehlt `catalog/`); `index.html` und `config.json` cacht
 CloudFront nicht, daher keine Invalidation nötig. Die Laufzeitkonfiguration
 (API-URL, Cognito-IDs) schreibt Terraform als `config.json` in den Bucket, damit ein Build für alle Umgebungen reicht.
 
@@ -76,7 +78,8 @@ CloudFront nicht, daher keine Invalidation nötig. Die Laufzeitkonfiguration
 - API-Vertrag ist `docs/api.yaml` (OpenAPI 3.1). Erst den Vertrag per PR ändern, dann implementieren.
   Prüfen: `npx @redocly/cli lint docs/api.yaml`.
 - Autorisierung **immer im Backend**: API Gateway prüft das JWT, die Lambda prüft Gruppe (`cognito:groups`) und
-  Besitz (Dozent nur eigene Kurse). Das UI blendet nur aus, es schützt nichts.
+  Besitz (Dozent nur eigene Kurse). Das UI blendet nur aus, es schützt nichts. Ausnahme: `/catalog/*` schützt CloudFront
+  per signierter URL, ausgestellt nur an angemeldete Nutzer (ADR 0013).
 - Eine IAM-Rolle pro Lambda, nur die nötigen Aktionen auf konkrete ARNs. Kein `*` bei Actions oder Resources ohne
   Begründung im Code-Kommentar.
 - Logs: strukturiertes JSON, **keine personenbezogenen Daten** (keine E-Mails, keine Tokens), Retention 30 Tage.
