@@ -13,7 +13,7 @@ import {
   type AttributeType,
 } from '@aws-sdk/client-cognito-identity-provider'
 import { keys } from '../backend/shared/keys.ts'
-import { courses, programs, sessionsFor, staff, testUserEmail } from './seed-plan.ts'
+import { courses, isValidPassword, programs, sessionsFor, staff, testUserEmail } from './seed-plan.ts'
 
 const { values } = parseArgs({
   options: { env: { type: 'string' }, users: { type: 'string', default: '10' } },
@@ -25,7 +25,10 @@ if (!Number.isInteger(userCount) || userCount < 0 || userCount > 1000) throw new
 
 // Passwords never live in the repo; all seeded users share this one.
 const password = process.env.SEED_PASSWORD
-if (!password) throw new Error('SEED_PASSWORD is not set (min. 12 chars, upper/lower case and a digit)')
+// Checked before any AWS call, otherwise users are created and the run stops at the password.
+if (!password || !isValidPassword(password)) {
+  throw new Error('SEED_PASSWORD is missing or invalid (min. 12 chars, upper/lower case and a digit)')
+}
 
 const outputs = JSON.parse(
   execFileSync(
@@ -56,7 +59,14 @@ const counts = { created: 0, existing: 0, usersCreated: 0, usersExisting: 0 }
 const ensureUser = async (email: string, group?: string): Promise<string> => {
   let id: string
   try {
-    id = sub((await cognito.send(new AdminGetUserCommand({ UserPoolId, Username: email }))).UserAttributes)
+    const user = await cognito.send(new AdminGetUserCommand({ UserPoolId, Username: email }))
+    id = sub(user.UserAttributes)
+    // Left over from an aborted run: created, but the password was never set.
+    if (user.UserStatus === 'FORCE_CHANGE_PASSWORD') {
+      await cognito.send(
+        new AdminSetUserPasswordCommand({ UserPoolId, Username: email, Password: password, Permanent: true }),
+      )
+    }
     counts.usersExisting++
   } catch (err) {
     if ((err as Error).name !== 'UserNotFoundException') throw err

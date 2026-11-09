@@ -146,4 +146,8 @@ export const sessionsFor = (today: Date, list: SeedCourse[] = courses): SeedSess
   return out
 }
 
+/** Cognito password policy of the user pool (infra/modules/auth): >= 12 chars, upper and lower case, a digit. */
+export const isValidPassword = (pw: string): boolean =>
+  pw.length >= 12 && /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /\d/.test(pw)
+
 export const testUserEmail = (i: number): string => `k6-${String(i).padStart(3, '0')}@${TEST_DOMAIN}`
