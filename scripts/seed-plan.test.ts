@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { isSessionId } from '../backend/shared/keys.ts'
-import { courses, seedSessionId, semesterOf, sessionsFor, testUserEmail } from './seed-plan.ts'
+import { courses, isValidPassword, seedSessionId, semesterOf, sessionsFor, testUserEmail } from './seed-plan.ts'
 
 test('semester follows the date', () => {
   assert.deepEqual(semesterOf(new Date('2026-11-04T00:00:00Z')).start, '2026-10-01')
@@ -33,4 +33,11 @@ test('seed data fits the API contract', () => {
   assert.ok(courses.every((c) => /^[a-z0-9-]{1,64}$/.test(c.id)))
   assert.ok(courses.filter((c) => c.programId === 'seb' && c.semester === 7).length >= 2)
   assert.equal(testUserEmail(7), 'k6-007@loadtest.example.com')
+})
+
+test('password check matches the user pool policy', () => {
+  assert.ok(isValidPassword('Example2026Pass'))
+  assert.ok(!isValidPassword('ExamplePassword')) // no digit
+  assert.ok(!isValidPassword('example2026pass')) // no upper case
+  assert.ok(!isValidPassword('Example2026')) // 11 chars
 })
