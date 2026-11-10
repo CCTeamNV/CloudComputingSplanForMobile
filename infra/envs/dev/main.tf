@@ -47,7 +47,8 @@ module "api" {
     # Cognito trigger, no routes and no permissions besides logs/X-Ray. loadtest.example.com: k6 users (seeded without mail).
     pre-signup = { environment = { ALLOWED_DOMAINS = "hs-heilbronn.de,loadtest.example.com" } }
     # Stream trigger, writes /catalog/*.json (ADR 0013); the rebuild of all files needs more than 10 s.
-    catalog = { timeout = 120, environment = { CATALOG_BUCKET = module.frontend.bucket } }
+    catalog  = { timeout = 120, environment = { CATALOG_BUCKET = module.frontend.bucket } }
+    lecturer = { routes = ["GET /lecturer/courses", "PATCH /lecturer/courses/{courseId}/sessions/{sessionId}"] }
     student = {
       routes = ["GET /me/subscriptions", "PUT /me/subscriptions/{courseId}", "DELETE /me/subscriptions/{courseId}"]
       environment = {
@@ -83,8 +84,9 @@ module "data" {
 
   # DynamoDB actions per Lambda (ADR 0008)
   access = {
-    catalog = { role = module.api.role_names.catalog, actions = ["dynamodb:Query", "dynamodb:GetItem"] }
-    student = { role = module.api.role_names.student, actions = ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"] }
+    catalog  = { role = module.api.role_names.catalog, actions = ["dynamodb:Query", "dynamodb:GetItem"] }
+    lecturer = { role = module.api.role_names.lecturer, actions = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem"] }
+    student  = { role = module.api.role_names.student, actions = ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"] }
   }
 
   # Only catalog data reaches the publisher, never USER# or ICAL# items.

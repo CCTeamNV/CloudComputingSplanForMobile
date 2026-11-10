@@ -4,9 +4,10 @@ import { Logger } from '@aws-lambda-powertools/logger'
 import { Tracer } from '@aws-lambda-powertools/tracer'
 import { DeleteCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm'
-import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyStructuredResultV2 } from 'aws-lambda'
-import type { ApiError, Course } from '../../shared/api.ts'
+import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda'
+import type { Course } from '../../shared/api.ts'
 import { db, getCourse, subscribedCourseIds, tableName } from '../../shared/db.ts'
+import { error, json, noContent, userIdOf, type Result } from '../../shared/http.ts'
 import { keys } from '../../shared/keys.ts'
 
 const logger = new Logger({ serviceName: 'student' })
@@ -23,14 +24,6 @@ const env = (name: string): string => {
   if (!value) throw new Error(`${name} is not set`)
   return value
 }
-
-const json = (statusCode: number, body: unknown): APIGatewayProxyStructuredResultV2 => ({
-  statusCode,
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify(body),
-})
-const error = (statusCode: number, code: ApiError['code'], message: string) => json(statusCode, { code, message })
-const noContent: APIGatewayProxyStructuredResultV2 = { statusCode: 204 }
 
 // --- CloudFront signed URL parameters (custom policy) ---
 
@@ -95,11 +88,8 @@ const unsubscribe = async (userId: string, courseId: string) => {
   return noContent
 }
 
-export const handler = async (
-  event: APIGatewayProxyEventV2WithJWTAuthorizer,
-): Promise<APIGatewayProxyStructuredResultV2> => {
-  // The user id comes only from the validated JWT, never from path or body.
-  const userId = event.requestContext.authorizer.jwt.claims.sub as string
+export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<Result> => {
+  const userId = userIdOf(event)
   const courseId = event.pathParameters?.courseId ?? ''
   try {
     switch (event.routeKey) {
