@@ -67,6 +67,12 @@ export const getCourse = async (courseId: string): Promise<Course | undefined> =
   return Item && toCourse(Item)
 }
 
+/** A session, or undefined if it does not exist. */
+export const getSession = async (courseId: string, sessionId: string): Promise<Session | undefined> => {
+  const { Item } = await db.send(new GetCommand({ TableName: tableName(), Key: keys.session(courseId, sessionId) }))
+  return Item && toSession(Item)
+}
+
 /** All sessions of a course, sorted by start. */
 export const allSessions = async (courseId: string): Promise<Session[]> =>
   (
