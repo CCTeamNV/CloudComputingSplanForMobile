@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
 }
 
@@ -18,6 +22,12 @@ variable "config" {
 
 variable "catalog_writer_role" {
   description = "IAM role name of the catalog publisher; may write and delete only under catalog/ (ADR 0013)."
+  type        = string
+  default     = null
+}
+
+variable "catalog_reader_role" {
+  description = "IAM role name of the Lambda that signs catalog URLs; may read only the signing key (ADR 0013)."
   type        = string
   default     = null
 }
@@ -97,6 +107,48 @@ resource "aws_iam_role_policy" "catalog_writer" {
   policy = data.aws_iam_policy_document.catalog_writer[0].json
 }
 
+# --- Signed URLs for /catalog/* (ADR 0013) ---
+
+# CloudFront requires RSA 2048. The private key is also in the Terraform state (private bucket, ADR 0004).
+resource "tls_private_key" "catalog" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+resource "aws_cloudfront_public_key" "catalog" {
+  name        = "${local.prefix}-catalog"
+  encoded_key = tls_private_key.catalog.public_key_pem
+}
+
+resource "aws_cloudfront_key_group" "catalog" {
+  name  = "${local.prefix}-catalog"
+  items = [aws_cloudfront_public_key.catalog.id]
+}
+
+# Standard tier with the AWS managed key aws/ssm: no charge.
+resource "aws_ssm_parameter" "catalog_key" {
+  name  = "/${local.prefix}/catalog-signing-key"
+  type  = "SecureString"
+  value = tls_private_key.catalog.private_key_pem
+}
+
+data "aws_iam_policy_document" "catalog_reader" {
+  count = var.catalog_reader_role == null ? 0 : 1
+
+  statement {
+    actions   = ["ssm:GetParameter"]
+    resources = [aws_ssm_parameter.catalog_key.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "catalog_reader" {
+  count = var.catalog_reader_role == null ? 0 : 1
+
+  name   = "catalog-signing-key"
+  role   = var.catalog_reader_role
+  policy = data.aws_iam_policy_document.catalog_reader[0].json
+}
+
 # --- CloudFront ---
 
 data "aws_cloudfront_cache_policy" "optimized" {
@@ -157,6 +209,20 @@ resource "aws_cloudfront_distribution" "site" {
     }
   }
 
+  # Static catalog: only with a signature. Query strings are not part of the cache key (CachingOptimized),
+  # so all users share one cached copy; the files' Cache-Control (60 s) sets the TTL.
+  ordered_cache_behavior {
+    path_pattern               = "/catalog/*"
+    target_origin_id           = "s3"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = data.aws_cloudfront_cache_policy.optimized.id
+    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security.id
+    trusted_key_groups         = [aws_cloudfront_key_group.catalog.id]
+  }
+
   # SPA deep links: S3 answers 403 for unknown keys behind OAC.
   dynamic "custom_error_response" {
     for_each = [403, 404]
@@ -181,6 +247,14 @@ resource "aws_cloudfront_distribution" "site" {
 
 output "url" {
   value = "https://${aws_cloudfront_distribution.site.domain_name}"
+}
+
+output "catalog_key_pair_id" {
+  value = aws_cloudfront_public_key.catalog.id
+}
+
+output "catalog_key_param" {
+  value = aws_ssm_parameter.catalog_key.name
 }
 
 output "bucket" {

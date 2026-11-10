@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/archive"
       version = "~> 2.7"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
 
   # Bucket is account-specific (splan-tfstate-<account-id>), passed at init: see README.
@@ -44,6 +48,14 @@ module "api" {
     pre-signup = { environment = { ALLOWED_DOMAINS = "hs-heilbronn.de,loadtest.example.com" } }
     # Stream trigger, writes /catalog/*.json (ADR 0013); the rebuild of all files needs more than 10 s.
     catalog = { timeout = 120, environment = { CATALOG_BUCKET = module.frontend.bucket } }
+    student = {
+      routes = ["GET /me/subscriptions", "PUT /me/subscriptions/{courseId}", "DELETE /me/subscriptions/{courseId}"]
+      environment = {
+        CATALOG_URL         = module.frontend.url
+        CATALOG_KEY_PAIR_ID = module.frontend.catalog_key_pair_id
+        CATALOG_KEY_PARAM   = module.frontend.catalog_key_param
+      }
+    }
   }
 
   jwt_authorizer = { issuer = module.auth.issuer, audience = [module.auth.client_id] }
@@ -72,6 +84,7 @@ module "data" {
   # DynamoDB actions per Lambda (ADR 0008)
   access = {
     catalog = { role = module.api.role_names.catalog, actions = ["dynamodb:Query", "dynamodb:GetItem"] }
+    student = { role = module.api.role_names.student, actions = ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"] }
   }
 
   # Only catalog data reaches the publisher, never USER# or ICAL# items.
@@ -89,6 +102,7 @@ module "frontend" {
 
   env                 = "dev"
   catalog_writer_role = module.api.role_names.catalog
+  catalog_reader_role = module.api.role_names.student
   config = {
     apiUrl           = module.api.api_url
     region           = "eu-central-1"
