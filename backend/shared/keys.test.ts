@@ -1,6 +1,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { berlinMidnight, isSessionId, keys, newSessionId, sessionRange, sessionStart } from './keys.ts'
+import {
+  berlinMidnight,
+  isSessionId,
+  keys,
+  newSessionId,
+  sessionRange,
+  sessionStart,
+  addWeeksBerlin,
+  berlinDate,
+} from './keys.ts'
 
 test('sessionId round-trips the start and matches the API pattern', () => {
   const start = new Date('2026-11-02T07:00:00Z')
@@ -65,4 +74,18 @@ test('range ends at local midnight on a 25-hour DST day', () => {
   // 2026-10-25: clocks go back, the next local midnight is 2026-10-25T23:00Z
   assert.ok(inRange('2026-10-25', '2026-10-25', '2026-10-25T22:30:00Z'))
   assert.ok(!inRange('2026-10-25', '2026-10-25', '2026-10-25T23:00:00Z'))
+})
+
+test('weekly repetition keeps the German wall-clock time across DST', () => {
+  // Monday 08:00 CEST on 2026-10-19 is 06:00Z; two weeks later (after 25.10.) 08:00 CET is 07:00Z.
+  assert.equal(addWeeksBerlin(new Date('2026-10-19T06:00:00Z'), 2).toISOString(), '2026-11-02T07:00:00.000Z')
+  // Spring: 2027-03-22 08:00 CET = 07:00Z, a week later (after 28.03.) 08:00 CEST = 06:00Z.
+  assert.equal(addWeeksBerlin(new Date('2027-03-22T07:00:00Z'), 1).toISOString(), '2027-03-29T06:00:00.000Z')
+  assert.equal(addWeeksBerlin(new Date('2026-11-02T07:00:00Z'), 0).toISOString(), '2026-11-02T07:00:00.000Z')
+})
+
+test('local German day of an instant', () => {
+  assert.equal(berlinDate(new Date('2026-11-02T23:30:00Z')), '2026-11-03')
+  assert.equal(berlinDate(new Date('2026-07-01T21:59:00Z')), '2026-07-01')
+  assert.equal(berlinDate(new Date('2026-07-01T22:00:00Z')), '2026-07-02')
 })

@@ -18,3 +18,9 @@ variable "callback_urls" {
   description = "Frontend URLs Cognito may redirect to after login/logout."
   type        = list(string)
 }
+
+variable "role_admin_role" {
+  description = "IAM role name of the Lambda that manages roles (admin); may list users and change group membership in this pool only."
+  type        = string
+  default     = null
+}

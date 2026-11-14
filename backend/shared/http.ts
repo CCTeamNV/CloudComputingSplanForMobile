@@ -31,3 +31,17 @@ export const groupsOf = (event: APIGatewayProxyEventV2WithJWTAuthorizer): string
 /** Cognito `sub` of the caller; the only source of the user id, never path or body. */
 export const userIdOf = (event: APIGatewayProxyEventV2WithJWTAuthorizer): string =>
   event.requestContext.authorizer.jwt.claims.sub as string
+
+/** Request body as a JSON object, or an error message for a 400. */
+export const bodyObject = (event: APIGatewayProxyEventV2WithJWTAuthorizer): Record<string, unknown> | string => {
+  const raw = event.isBase64Encoded && event.body ? Buffer.from(event.body, 'base64').toString() : event.body
+  let value: unknown
+  try {
+    value = JSON.parse(raw ?? '')
+  } catch {
+    return 'Body must be JSON'
+  }
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : 'Body must be an object'
+}
