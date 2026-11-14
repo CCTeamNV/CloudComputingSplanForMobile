@@ -9,4 +9,8 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  // The catalog files come without CORS headers (ADR 0013): locally, proxy them through the dev server.
+  server: process.env.SPLAN_CATALOG_ORIGIN
+    ? { proxy: { '/catalog': { target: process.env.SPLAN_CATALOG_ORIGIN, changeOrigin: true } } }
+    : undefined,
 })
