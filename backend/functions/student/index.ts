@@ -1,14 +1,14 @@
 // Lambda student: the signed-in user's subscriptions and the signature for the static catalog files (ADR 0013).
-import { createSign } from 'node:crypto'
+import { createSign, randomBytes } from 'node:crypto'
 import { Logger } from '@aws-lambda-powertools/logger'
 import { Tracer } from '@aws-lambda-powertools/tracer'
-import { DeleteCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import { DeleteCommand, GetCommand, PutCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb'
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda'
 import type { Course } from '../../shared/api.ts'
 import { db, getCourse, subscribedCourseIds, tableName } from '../../shared/db.ts'
 import { error, json, noContent, userIdOf, type Result } from '../../shared/http.ts'
-import { keys } from '../../shared/keys.ts'
+import { icalTokenHash, keys } from '../../shared/keys.ts'
 
 const logger = new Logger({ serviceName: 'student' })
 const tracer = new Tracer({ serviceName: 'student' })
@@ -88,6 +88,44 @@ const unsubscribe = async (userId: string, courseId: string) => {
   return noContent
 }
 
+// --- iCal token (ADR 0007) ---
+
+const currentIcalHash = async (userId: string): Promise<string | undefined> =>
+  (await db.send(new GetCommand({ TableName: tableName(), Key: keys.icalOfUser(userId) }))).Item?.tokenHash as
+    string | undefined
+
+/** New token, old one invalid in the same transaction; the plain token is returned once and never stored. */
+const rotateIcalToken = async (userId: string, domain: string) => {
+  const token = randomBytes(32).toString('base64url')
+  const hash = icalTokenHash(token)
+  const old = await currentIcalHash(userId)
+  await db.send(
+    new TransactWriteCommand({
+      TransactItems: [
+        { Put: { TableName: tableName(), Item: { ...keys.icalOfUser(userId), tokenHash: hash } } },
+        { Put: { TableName: tableName(), Item: { ...keys.icalLookup(hash), userId } } },
+        ...(old ? [{ Delete: { TableName: tableName(), Key: keys.icalLookup(old) } }] : []),
+      ],
+    }),
+  )
+  return json(201, { url: `https://${domain}/ical/${token}` })
+}
+
+const revokeIcalToken = async (userId: string) => {
+  const old = await currentIcalHash(userId)
+  if (old) {
+    await db.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          { Delete: { TableName: tableName(), Key: keys.icalOfUser(userId) } },
+          { Delete: { TableName: tableName(), Key: keys.icalLookup(old) } },
+        ],
+      }),
+    )
+  }
+  return noContent
+}
+
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<Result> => {
   const userId = userIdOf(event)
   const courseId = event.pathParameters?.courseId ?? ''
@@ -101,6 +139,10 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer): P
           : error(404, 'not_found', 'Course not found')
       case 'DELETE /me/subscriptions/{courseId}':
         return COURSE_ID.test(courseId) ? await unsubscribe(userId, courseId) : noContent
+      case 'POST /me/ical-token':
+        return await rotateIcalToken(userId, event.requestContext.domainName)
+      case 'DELETE /me/ical-token':
+        return await revokeIcalToken(userId)
       default:
         return error(404, 'not_found', 'Route not found')
     }

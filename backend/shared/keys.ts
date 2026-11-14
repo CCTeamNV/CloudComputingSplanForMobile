@@ -1,5 +1,5 @@
 // Key layout of the single table (ADR 0003).
-import { randomInt } from 'node:crypto'
+import { createHash, randomInt } from 'node:crypto'
 
 export const keys = {
   programs: () => ({ PK: 'PROGRAMS' }),
@@ -13,6 +13,10 @@ export const keys = {
   programSemester: (programId: string, semester: number) => `PROGRAM#${programId}#SEM#${semester}`,
   lecturer: (lecturerId: string) => `LECTURER#${lecturerId}`,
 }
+
+/** iCal tokens are stored only as SHA-256 hex (ADR 0007); the plain token exists only in the user's URL. */
+export const icalTokenHash = (token: string): string => createHash('sha256').update(token).digest('hex')
+export const ICAL_TOKEN = /^[A-Za-z0-9_-]{43}$/ // 32 random bytes as base64url
 
 export const SESSION_PREFIX = 'SESSION#'
 export const SUB_PREFIX = 'SUB#'

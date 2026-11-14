@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { createVerify, generateKeyPairSync } from 'node:crypto'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyStructuredResultV2 } from 'aws-lambda'
 import { db } from '../../shared/db.ts'
+import { icalTokenHash } from '../../shared/keys.ts'
 import { catalogAccess, handler, MAX_SUBSCRIPTIONS, ssm } from './index.ts'
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
@@ -35,6 +36,12 @@ beforeEach(() => {
       case 'DeleteCommand':
         table = table.filter((i) => !same(i, input.Key as Item))
         return {}
+      case 'TransactWriteCommand':
+        for (const t of input.TransactItems as { Put?: { Item: Item }; Delete?: { Key: Item } }[]) {
+          if (t.Put) table = table.filter((i) => !same(i, t.Put!.Item)).concat(t.Put.Item)
+          if (t.Delete) table = table.filter((i) => !same(i, t.Delete!.Key))
+        }
+        return {}
       default: {
         const v = input.ExpressionAttributeValues as Item
         return { Items: table.filter((i) => i.PK === v[':pk'] && i.SK.startsWith(v[':sub'] ?? '')) }
@@ -59,7 +66,7 @@ const call = async (routeKey: string, sub: string, courseId?: string) => {
   const result = (await handler({
     routeKey,
     pathParameters: courseId === undefined ? undefined : { courseId },
-    requestContext: { authorizer: { jwt: { claims: { sub }, scopes: [] } } },
+    requestContext: { domainName: 'api.example.com', authorizer: { jwt: { claims: { sub }, scopes: [] } } },
   } as unknown as APIGatewayProxyEventV2WithJWTAuthorizer)) as APIGatewayProxyStructuredResultV2
   return { status: result.statusCode, body: result.body ? JSON.parse(result.body) : undefined, raw: result.body ?? '' }
 }
@@ -145,4 +152,32 @@ test('a failing dependency answers 500 without leaking details', async () => {
   assert.deepEqual(body, { code: 'internal', message: 'Internal error' })
   assert.ok(logs.join('').includes('request failed'), 'error is logged')
   assert.ok(!logs.join('').includes('user-a'))
+})
+
+test('iCal token: returned once, stored only as hash, rotation and revocation invalidate the old one', async () => {
+  const lookups = () => table.filter((i) => i.PK.startsWith('ICAL#'))
+  const first = await call('POST /me/ical-token', 'user-a')
+  assert.equal(first.status, 201)
+  const token1 = first.body.url.match(/^https:\/\/api\.example\.com\/ical\/([A-Za-z0-9_-]{43})$/)?.[1]
+  assert.ok(token1, first.body.url)
+  assert.ok(!JSON.stringify(table).includes(token1), 'plain token is never stored')
+  assert.deepEqual(
+    lookups().map((i) => i.PK),
+    [`ICAL#${icalTokenHash(token1)}`],
+  )
+
+  const second = await call('POST /me/ical-token', 'user-a')
+  const token2 = second.body.url.split('/').pop()
+  assert.notEqual(token2, token1)
+  assert.deepEqual(
+    lookups().map((i) => i.PK),
+    [`ICAL#${icalTokenHash(token2)}`],
+    'old token is gone',
+  )
+
+  await call('POST /me/ical-token', 'user-b')
+  assert.equal((await call('DELETE /me/ical-token', 'user-a')).status, 204)
+  assert.equal(lookups().length, 1, "only user B's token is left")
+  assert.ok(!table.some((i) => i.PK === 'USER#user-a' && i.SK === 'ICAL'))
+  assert.equal((await call('DELETE /me/ical-token', 'user-a')).status, 204) // idempotent
 })
