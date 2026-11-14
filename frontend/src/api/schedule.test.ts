@@ -7,8 +7,17 @@ vi.mock('./catalog', () => ({
   getSubscriptions: () => getSubscriptions(),
   catalogFile: (path: string) => catalogFile(path),
 }))
-const { addDays, berlinDay, berlinTime, currentOrNext, loadSchedule, mergeSessions, sessionsOn, weekDays } =
-  await import('./schedule')
+const {
+  addDays,
+  berlinDay,
+  berlinTime,
+  currentOrNext,
+  loadSchedule,
+  mergeSessions,
+  recentlyChanged,
+  sessionsOn,
+  weekDays,
+} = await import('./schedule')
 
 const s = (id: string, start: string, end: string, over: Partial<PublicSession> = {}): PublicSession => ({
   id,
@@ -82,4 +91,12 @@ test('loadSchedule fetches one file per subscribed course and merges them', asyn
   )
   expect((await loadSchedule()).map((x) => x.id)).toEqual(['its/1', 'cc/1'])
   expect(catalogFile.mock.calls.map((c) => c[0]).sort()).toEqual(['sessions/cc.json', 'sessions/its.json'])
+})
+
+test('recently changed means updatedAt within the last 48 hours', () => {
+  const now = new Date('2026-11-14T12:00:00Z')
+  const at = (updatedAt: string) => s('cc/1', '2026-11-16T07:00:00Z', '2026-11-16T08:30:00Z', { updatedAt })
+  expect(recentlyChanged(at('2026-11-14T11:00:00Z'), now)).toBe(true)
+  expect(recentlyChanged(at('2026-11-12T12:00:01Z'), now)).toBe(true)
+  expect(recentlyChanged(at('2026-11-12T12:00:00Z'), now)).toBe(false)
 })

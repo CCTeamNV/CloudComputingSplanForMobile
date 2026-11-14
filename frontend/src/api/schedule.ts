@@ -41,6 +41,10 @@ export const currentOrNext = (sessions: PublicSession[], now: Date): PublicSessi
   return sessions.find((s) => !s.cancelled && s.end > t && berlinDay(s.start) === berlinDay(now))
 }
 
+/** Changed in the last `hours` (cancellation, room change or an edit by the admin); for the "recently changed" hint. */
+export const recentlyChanged = (s: PublicSession, now: Date, hours = 48): boolean =>
+  now.getTime() - new Date(s.updatedAt).getTime() < hours * 3_600_000
+
 /** Subscriptions first (they bring the signature), then one file per course in parallel. */
 export async function loadSchedule(): Promise<PublicSession[]> {
   const courses = await getSubscriptions()

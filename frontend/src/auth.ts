@@ -33,7 +33,11 @@ const load = (): Tokens | null => {
   }
 }
 const save = (t: Tokens) => localStorage.setItem(TOKENS, JSON.stringify(t))
-export const clearSession = () => localStorage.removeItem(TOKENS)
+export const ICAL_URL = 'splan.icalUrl' // the secret feed URL is shown only once by the API, so the device keeps it
+export const clearSession = () => {
+  localStorage.removeItem(TOKENS)
+  localStorage.removeItem(ICAL_URL) // the next user of this device must not see it
+}
 
 const claims = (jwt: string): Record<string, unknown> => {
   const payload = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
