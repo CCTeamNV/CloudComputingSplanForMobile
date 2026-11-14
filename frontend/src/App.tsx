@@ -1,13 +1,18 @@
-import { CalendarDays, Search } from 'lucide-react'
+import { CalendarDays, Search, Settings2, UserRound } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router'
+import { currentSession } from '@/auth'
 import { cn } from '@/lib/utils'
 
 const nav = [
   { to: '/', label: 'Plan', icon: CalendarDays },
   { to: '/courses', label: 'Kurse', icon: Search },
+  // Only hidden for others; the backend refuses them anyway (ADR 0006).
+  { to: '/admin', label: 'Verwaltung', icon: Settings2, roles: ['admin', 'lecturer'] },
+  { to: '/account', label: 'Konto', icon: UserRound },
 ]
 
 export default function App() {
+  const roles = currentSession()?.roles ?? []
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/95 px-4 py-3 backdrop-blur">
@@ -23,23 +28,25 @@ export default function App() {
         className="fixed inset-x-0 bottom-0 border-t bg-background pb-[env(safe-area-inset-bottom)]"
       >
         <ul className="mx-auto flex max-w-2xl">
-          {nav.map(({ to, label, icon: Icon }) => (
-            <li key={to} className="flex-1">
-              <NavLink
-                to={to}
-                end
-                className={({ isActive }) =>
-                  cn(
-                    'flex flex-col items-center gap-1 py-2 text-xs text-muted-foreground',
-                    isActive && 'font-medium text-foreground',
-                  )
-                }
-              >
-                <Icon aria-hidden className="size-5" />
-                {label}
-              </NavLink>
-            </li>
-          ))}
+          {nav
+            .filter((item) => !item.roles || item.roles.some((r) => roles.includes(r)))
+            .map(({ to, label, icon: Icon }) => (
+              <li key={to} className="flex-1">
+                <NavLink
+                  to={to}
+                  end
+                  className={({ isActive }) =>
+                    cn(
+                      'flex flex-col items-center gap-1 py-2 text-xs text-muted-foreground',
+                      isActive && 'font-medium text-foreground',
+                    )
+                  }
+                >
+                  <Icon aria-hidden className="size-5" />
+                  {label}
+                </NavLink>
+              </li>
+            ))}
         </ul>
       </nav>
     </div>
