@@ -1,3 +1,5 @@
 {
-  "apiUrl": "https://REPLACE.execute-api.eu-central-1.amazonaws.com"
+  "apiUrl": "https://REPLACE.execute-api.eu-central-1.amazonaws.com",
+  "authDomain": "https://splan-dev-REPLACE.auth.eu-central-1.amazoncognito.com",
+  "userPoolClientId": "REPLACE"
 }

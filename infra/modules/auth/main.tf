@@ -58,6 +58,15 @@ resource "aws_cognito_user_group" "role" {
 resource "aws_cognito_user_pool_domain" "this" {
   domain       = "${local.prefix}-${data.aws_caller_identity.current.account_id}"
   user_pool_id = aws_cognito_user_pool.this.id
+  # Managed login (v2): localized pages (the app sends lang=de); included in the Essentials tier at no extra cost.
+  managed_login_version = 2
+}
+
+# Managed login needs a branding per app client; Cognito's default look is enough for us.
+resource "aws_cognito_managed_login_branding" "web" {
+  user_pool_id                = aws_cognito_user_pool.this.id
+  client_id                   = aws_cognito_user_pool_client.web.id
+  use_cognito_provided_values = true
 }
 
 # Public SPA client: no secret, authorization code flow; the frontend sends the PKCE code_challenge.
