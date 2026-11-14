@@ -176,7 +176,19 @@ Cognito User Pool ([ADR 0006](docs/decisions/0006-cognito-groups-authorization.m
 ### Datenschutz (DSGVO)
 
 Gespeichert werden nur E-Mail (Cognito), User-ID, Abos und iCal-Token-Hash, alles in `eu-central-1`.
-„Account löschen“ entfernt Cognito-User, Abos und Token. Logs enthalten keine personenbezogenen Daten (30 Tage Retention).
+Logs enthalten keine personenbezogenen Daten (30 Tage Retention).
+
+**Account löschen** (`DELETE /me`, Lambda `student`): Die User-ID kommt nur aus dem JWT, man kann also nur das eigene
+Konto löschen. Die Reihenfolge verhindert verwaiste personenbezogene Daten:
+
+1. iCal-Lookup `ICAL#<hash>` löschen, damit die Kalender-URL sofort 404 liefert
+2. alle Items `USER#<sub>` löschen (Abos, iCal-Eintrag)
+3. zuletzt den Cognito-User (`AdminDeleteUser`, IAM nur auf diesen User Pool)
+
+Scheitert ein Schritt, existiert das Konto noch und das Löschen lässt sich einfach wiederholen; ein bereits gelöschter
+Cognito-User gilt als Erfolg. Danach meldet die App den Nutzer ab. Ein schon ausgestelltes Access-Token bleibt bis zu
+60 Minuten gültig, eine ausgestellte Katalog-Signatur bis zu 1 Stunde (nur Kurs- und Termindaten, ADR 0013).
+Die Hochschul-Mail ist danach wieder frei für eine neue Registrierung.
 
 - TODO: IAM-Policies je Rolle als Tabelle ergänzen, sobald sie in Terraform stehen
 

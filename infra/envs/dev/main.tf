@@ -70,6 +70,7 @@ module "api" {
         "DELETE /me/subscriptions/{courseId}",
         "POST /me/ical-token",
         "DELETE /me/ical-token",
+        "DELETE /me",
       ]
       environment = {
         CATALOG_URL         = module.frontend.url
@@ -96,6 +97,7 @@ module "auth" {
   pre_signup_lambda_arn = module.api.function_arns["pre-signup"]
   callback_urls         = ["${module.frontend.url}/", "http://localhost:5173/"]
   role_admin_role       = module.api.role_names.admin
+  account_deleter_role  = module.api.role_names.student
 }
 
 module "data" {

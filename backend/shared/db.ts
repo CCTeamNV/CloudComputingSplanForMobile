@@ -122,6 +122,10 @@ export const sessionsInRange = async (courseId: string, from: string, to: string
   return items.map(toSession) // the SK sorts by start, DynamoDB returns ascending
 }
 
+/** Every item of a user (subscriptions, iCal), for account deletion. */
+export const userItems = (userId: string): Promise<Item[]> =>
+  queryAll({ KeyConditionExpression: 'PK = :pk', ExpressionAttributeValues: { ':pk': `USER#${userId}` } })
+
 /** Course ids a user subscribed to. */
 export const subscribedCourseIds = async (userId: string): Promise<string[]> =>
   (
