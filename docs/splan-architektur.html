@@ -1,0 +1,449 @@
+<title>SPLAN Mobile Architektur</title>
+<meta name="claude:viewport-fit-sides" content="cover" />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+/>
+<style>
+  /* Layout: one wide engineering drawing, then a three-column status ledger. */
+  :root {
+    --bg: #f6f8fa;
+    --fg: #17222c;
+    --muted: #566573;
+    --line: #c8d2db;
+    --surface: #ffffff;
+    --live: #17794f;
+    --live-bg: #e0f3e9;
+    --part: #9a6200;
+    --part-bg: #fcefd2;
+    --todo: #6b7886;
+    --todo-bg: #f6f8fa;
+    --sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --bg: #11181f;
+      --fg: #e8eef3;
+      --muted: #9dabb8;
+      --line: #36434f;
+      --surface: #19232c;
+      --live: #58cf9a;
+      --live-bg: #14392a;
+      --part: #f0b952;
+      --part-bg: #41300f;
+      --todo: #8f9dab;
+      --todo-bg: #11181f;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme='dark'] {
+    --bg: #11181f;
+    --fg: #e8eef3;
+    --muted: #9dabb8;
+    --line: #36434f;
+    --surface: #19232c;
+    --live: #58cf9a;
+    --live-bg: #14392a;
+    --part: #f0b952;
+    --part-bg: #41300f;
+    --todo: #8f9dab;
+    --todo-bg: #11181f;
+    color-scheme: dark;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.55 var(--sans);
+  }
+  main {
+    max-width: 1160px;
+    margin: 0 auto;
+    display: grid;
+    gap: 28px;
+    padding-block: 36px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  header {
+    display: grid;
+    gap: 8px;
+  }
+  .eyebrow {
+    font: 500 13px var(--mono);
+    color: var(--muted);
+  }
+  h1 {
+    font-size: clamp(28px, 4vw, 40px);
+    line-height: 1.15;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lead {
+    margin: 0;
+    max-width: 68ch;
+  }
+  figure {
+    margin: 0;
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+  }
+  .scroll {
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  svg.arch {
+    display: block;
+    width: 100%;
+    min-width: 920px;
+    height: auto;
+    font-family: var(--sans);
+  }
+  figcaption {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 80ch;
+  }
+  svg.arch text {
+    fill: var(--fg);
+    font-size: 13px;
+    text-anchor: middle;
+  }
+  svg.arch text.t {
+    font-weight: 600;
+  }
+  svg.arch text.s {
+    font-size: 11px;
+    fill: var(--muted);
+  }
+  svg.arch text.l {
+    font-size: 11px;
+    fill: var(--muted);
+    paint-order: stroke;
+    stroke: var(--surface);
+    stroke-width: 5px;
+    stroke-linejoin: round;
+  }
+  svg.arch text.start {
+    text-anchor: start;
+  }
+  svg.arch text.end {
+    text-anchor: end;
+  }
+  svg.arch text.zone {
+    font: 500 12px var(--mono);
+    fill: var(--muted);
+    text-anchor: start;
+  }
+  .zone-box {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 1.5;
+    stroke-dasharray: 2 4;
+  }
+  .who {
+    fill: var(--bg);
+    stroke: var(--line);
+    stroke-width: 1.5;
+  }
+  .live {
+    fill: var(--live-bg);
+    stroke: var(--live);
+    stroke-width: 1.75;
+  }
+  .part {
+    fill: var(--part-bg);
+    stroke: var(--part);
+    stroke-width: 1.75;
+  }
+  .todo {
+    fill: var(--todo-bg);
+    stroke: var(--todo);
+    stroke-width: 1.25;
+    stroke-dasharray: 5 4;
+  }
+  .on {
+    fill: none;
+    stroke: var(--live);
+    stroke-width: 1.75;
+  }
+  .off {
+    fill: none;
+    stroke: var(--todo);
+    stroke-width: 1.25;
+    stroke-dasharray: 5 4;
+  }
+  .head-on {
+    fill: var(--live);
+  }
+  .head-off {
+    fill: var(--todo);
+  }
+  .ledger {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+  .ledger section {
+    min-width: 0;
+    border-top: 3px solid;
+    padding-top: 10px;
+  }
+  .ledger section.a {
+    border-color: var(--live);
+  }
+  .ledger section.b {
+    border-color: var(--part);
+  }
+  .ledger section.c {
+    border-color: var(--todo);
+  }
+  h2 {
+    margin: 0 0 8px;
+    font-size: 19px;
+  }
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 10px;
+  }
+  li b {
+    display: block;
+    font-weight: 600;
+  }
+  li span {
+    color: var(--muted);
+    font-size: 15px;
+  }
+  .foot {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    max-width: 80ch;
+  }
+  @media (max-width: 760px) {
+    .ledger {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>
+
+<main>
+  <header>
+    <div class="eyebrow">Stand 14.11.2026 · Account 048861330600 · eu-central-1</div>
+    <h1>SPLAN Mobile: Zielarchitektur und heutiger Stand</h1>
+    <p class="lead">
+      Das Bild zeigt die fertige Anwendung. In dev laufen alle 7 Lambda-Funktionen, die Katalog-Dateien und das
+      Kalender-Abo. Es fehlen Monitoring, Lasttest, prod und im Frontend Login und echte Daten.
+    </p>
+  </header>
+
+  <figure>
+    <div class="scroll">
+      <svg
+        class="arch"
+        viewBox="0 0 1120 735"
+        role="img"
+        aria-label="AWS-Zielarchitektur der Stundenplan-App. Webseite, Benutzerverwaltung, API Gateway, alle Lambda-Funktionen, DynamoDB mit Stream und die signierten Katalog-Dateien laufen in dev. Alarme, Dashboard, Lasttest und der Login im Frontend fehlen noch."
+      >
+        <defs>
+          <marker
+            id="a-on"
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+          >
+            <path class="head-on" d="M0 0L10 5L0 10z" />
+          </marker>
+          <marker
+            id="a-off"
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+          >
+            <path class="head-off" d="M0 0L10 5L0 10z" />
+          </marker>
+        </defs>
+
+        <rect class="zone-box" x="185" y="45" width="745" height="675" rx="6" />
+        <text class="zone" x="200" y="68">AWS eu-central-1 · heute nur Umgebung dev, prod fehlt</text>
+
+        <!-- arrows first, boxes paint over their ends -->
+        <line class="on" x1="150" y1="110" x2="239" y2="110" marker-end="url(#a-on)" />
+        <line class="off" x1="150" y1="225" x2="239" y2="225" marker-end="url(#a-off)" />
+        <line class="on" x1="150" y1="400" x2="239" y2="400" marker-end="url(#a-on)" />
+        <line class="on" x1="150" y1="520" x2="239" y2="520" marker-end="url(#a-on)" />
+        <line class="on" x1="380" y1="110" x2="469" y2="110" marker-end="url(#a-on)" />
+        <line class="on" x1="380" y1="225" x2="469" y2="225" marker-end="url(#a-on)" />
+        <line class="on" x1="960" y1="110" x2="641" y2="110" marker-end="url(#a-on)" />
+        <line class="on" x1="380" y1="349" x2="469" y2="349" marker-end="url(#a-on)" />
+        <line class="on" x1="380" y1="441" x2="469" y2="441" marker-end="url(#a-on)" />
+        <line class="on" x1="380" y1="487" x2="469" y2="487" marker-end="url(#a-on)" />
+        <line class="on" x1="380" y1="533" x2="469" y2="533" marker-end="url(#a-on)" />
+        <line class="on" x1="380" y1="579" x2="469" y2="579" marker-end="url(#a-on)" />
+        <line class="on" x1="759" y1="405" x2="641" y2="405" marker-end="url(#a-on)" />
+        <polyline class="on" points="640,385 680,385 680,125 641,125" marker-end="url(#a-on)" />
+        <line class="on" x1="640" y1="441" x2="759" y2="441" marker-end="url(#a-on)" />
+        <line class="on" x1="640" y1="487" x2="759" y2="487" marker-end="url(#a-on)" />
+        <line class="on" x1="640" y1="533" x2="759" y2="533" marker-end="url(#a-on)" />
+        <line class="on" x1="640" y1="579" x2="759" y2="579" marker-end="url(#a-on)" />
+        <line class="on" x1="510" y1="598" x2="510" y2="649" marker-end="url(#a-on)" />
+        <line class="on" x1="600" y1="598" x2="600" y2="649" marker-end="url(#a-on)" />
+        <line class="off" x1="700" y1="675" x2="759" y2="675" marker-end="url(#a-off)" />
+        <line class="off" x1="310" y1="650" x2="310" y2="599" marker-end="url(#a-off)" />
+
+        <text class="l" x="195" y="102">App, /catalog</text>
+        <text class="l" x="195" y="217">Anmeldung</text>
+        <text class="l" x="195" y="392">HTTPS + JWT</text>
+        <text class="l" x="195" y="512">/ical/{token}</text>
+        <text class="l" x="425" y="102">OAC</text>
+        <text class="l" x="425" y="217">Trigger</text>
+        <text class="l" x="800" y="102">deployt per OIDC</text>
+        <text class="l" x="425" y="322">Route je Domäne</text>
+        <text class="l" x="700" y="432">liest, schreibt</text>
+        <text class="l" x="715" y="398">Stream</text>
+        <text class="l start" x="686" y="260">JSON bei Änderung</text>
+        <text class="l end" x="504" y="628">Traces</text>
+        <text class="l start" x="606" y="628">Logs, Metriken</text>
+        <text class="l" x="730" y="667">Alarm</text>
+        <text class="l start" x="316" y="628">erzeugt Last</text>
+
+        <!-- outside AWS -->
+        <rect class="who" x="20" y="85" width="130" height="345" rx="4" />
+        <text class="t" x="85" y="225">Studierende</text>
+        <text class="t" x="85" y="245">Dozierende</text>
+        <text class="t" x="85" y="265">Admins</text>
+        <text class="s" x="85" y="285">Smartphone, Desktop</text>
+        <rect class="who" x="20" y="495" width="130" height="50" rx="4" />
+        <text class="t" x="85" y="515">Kalender-Apps</text>
+        <text class="s" x="85" y="532">Google, Apple, Outlook</text>
+        <rect class="live" x="960" y="85" width="140" height="50" rx="4" />
+        <text class="t" x="1030" y="105">✓ GitHub Actions</text>
+        <text class="s" x="1030" y="122">CI, Terraform</text>
+
+        <!-- edge and auth -->
+        <rect class="live" x="240" y="85" width="140" height="50" rx="4" />
+        <text class="t" x="310" y="105">✓ CloudFront</text>
+        <text class="s" x="310" y="122">HTTPS, Caching</text>
+        <rect class="part" x="470" y="85" width="170" height="50" rx="4" />
+        <text class="t" x="555" y="105">◐ S3 Frontend</text>
+        <text class="s" x="555" y="122">App mit Beispieldaten, /catalog</text>
+        <rect class="live" x="240" y="200" width="140" height="50" rx="4" />
+        <text class="t" x="310" y="220">✓ Cognito</text>
+        <text class="s" x="310" y="237">Konten, Rollen</text>
+        <rect class="live" x="470" y="200" width="170" height="50" rx="4" />
+        <text class="t" x="555" y="220">✓ λ pre-signup</text>
+        <text class="s" x="555" y="237">prüft Hochschul-Mail</text>
+
+        <!-- api -->
+        <rect class="live" x="240" y="330" width="140" height="268" rx="4" />
+        <text class="t" x="310" y="448">✓ API Gateway</text>
+        <text class="s" x="310" y="466">HTTP API</text>
+        <text class="s" x="310" y="482">JWT-Prüfung</text>
+        <rect class="live" x="470" y="330" width="170" height="38" rx="4" />
+        <text class="t" x="555" y="346">✓ λ health</text>
+        <text class="s" x="555" y="361">Lebenszeichen</text>
+        <rect class="live" x="470" y="376" width="170" height="38" rx="4" />
+        <text class="t" x="555" y="392">✓ λ catalog</text>
+        <text class="s" x="555" y="407">schreibt JSON-Dateien</text>
+        <rect class="live" x="470" y="422" width="170" height="38" rx="4" />
+        <text class="t" x="555" y="438">✓ λ student</text>
+        <text class="s" x="555" y="453">Abos, Signatur, Löschen*</text>
+        <rect class="live" x="470" y="468" width="170" height="38" rx="4" />
+        <text class="t" x="555" y="484">✓ λ lecturer</text>
+        <text class="s" x="555" y="499">absagen, Raum ändern</text>
+        <rect class="live" x="470" y="514" width="170" height="38" rx="4" />
+        <text class="t" x="555" y="530">✓ λ ical</text>
+        <text class="s" x="555" y="545">Kalender-Abo</text>
+        <rect class="live" x="470" y="560" width="170" height="38" rx="4" />
+        <text class="t" x="555" y="576">✓ λ admin</text>
+        <text class="s" x="555" y="591">Kurse, Termine, Rollen*</text>
+
+        <rect class="live" x="760" y="376" width="140" height="222" rx="4" />
+        <text class="t" x="830" y="478">✓ DynamoDB</text>
+        <text class="s" x="830" y="496">Seed-Daten, Stream</text>
+
+        <!-- operations row -->
+        <rect class="todo" x="240" y="650" width="140" height="50" rx="4" />
+        <text class="t" x="310" y="670">○ ECS Fargate</text>
+        <text class="s" x="310" y="687">k6 aus ECR, on demand</text>
+        <rect class="part" x="430" y="650" width="145" height="50" rx="4" />
+        <text class="t" x="502" y="670">◐ X-Ray</text>
+        <text class="s" x="502" y="687">Tracing aktiv, ungeprüft</text>
+        <rect class="part" x="585" y="650" width="115" height="50" rx="4" />
+        <text class="t" x="642" y="670">◐ CloudWatch</text>
+        <text class="s" x="642" y="687">Logs, keine Alarme</text>
+        <rect class="todo" x="760" y="650" width="140" height="50" rx="4" />
+        <text class="t" x="830" y="670">○ SNS</text>
+        <text class="s" x="830" y="687">Alarm per E-Mail</text>
+
+        <!-- legend -->
+        <text class="zone" x="960" y="205">Legende</text>
+        <rect class="live" x="960" y="218" width="22" height="16" rx="3" />
+        <text class="start" x="992" y="231">✓ läuft</text>
+        <rect class="part" x="960" y="244" width="22" height="16" rx="3" />
+        <text class="start" x="992" y="257">◐ da, unvollständig</text>
+        <rect class="todo" x="960" y="270" width="22" height="16" rx="3" />
+        <text class="start" x="992" y="283">○ fehlt noch</text>
+        <line class="on" x1="960" y1="306" x2="984" y2="306" marker-end="url(#a-on)" />
+        <text class="start" x="992" y="310">aktiv</text>
+        <line class="off" x1="960" y1="330" x2="984" y2="330" marker-end="url(#a-off)" />
+        <text class="start" x="992" y="334">geplant</text>
+        <text class="s start" x="960" y="362">* spricht auch mit Cognito</text>
+      </svg>
+    </div>
+    <figcaption>
+      Der grüne Pfad ist in dev geprüft: Die App lädt Kurse und Termine als Dateien über CloudFront, mit einer
+      signierten URL aus <code>GET /me/subscriptions</code>. Abos, Absagen, Raumänderungen und Admin-Änderungen
+      laufen über die API in die Datenbank, und die Lambda <code>catalog</code> schreibt daraus binnen etwa einer
+      Minute neue Dateien. Kalender-Apps holen den Plan über <code>/ical/{token}</code>. Der Login im Frontend
+      (gestrichelter Pfeil „Anmeldung“) fehlt noch.
+    </figcaption>
+  </figure>
+
+  <div class="ledger">
+    <section class="a">
+      <h2>✓ Läuft</h2>
+      <ul>
+        <li><b>Webseite und Katalog-Dateien</b><span>CloudFront mit Signaturpflicht auf <code>/catalog/*</code>, geteilter Cache.</span></li>
+        <li><b>7 Lambda-Funktionen</b><span>catalog, student, lecturer, admin, ical, pre-signup, health; Rechte im Backend geprüft.</span></li>
+        <li><b>DynamoDB mit Stream</b><span>Seed-Daten (SEB, WIB, 6 Kurse); Änderungen erreichen die Dateien in etwa 1 Minute.</span></li>
+        <li><b>Kalender-Abo</b><span>Token nur als Hash gespeichert, nicht in Logs.</span></li>
+        <li><b>CI/CD nach dev</b><span>Merge auf <code>main</code> deployt per OIDC.</span></li>
+      </ul>
+    </section>
+    <section class="b">
+      <h2>◐ Da, aber unvollständig</h2>
+      <ul>
+        <li><b>Frontend</b><span>Zeigt Beispieldaten; Login, Kurssuche und Plan aus den Dateien fehlen (#14–#16).</span></li>
+        <li><b>Beobachtbarkeit</b><span>Logs und X-Ray-Tracing laufen, Dashboard und Alarme fehlen (#23).</span></li>
+      </ul>
+    </section>
+    <section class="c">
+      <h2>○ Fehlt noch</h2>
+      <ul>
+        <li><b>Monitoring</b><span>Dashboard, Alarme auf Fehler und <code>IteratorAge</code>, SNS (#23)</span></li>
+        <li><b>Lasttest</b><span>k6-Szenarien und Fargate-Modul (#28, #29)</span></li>
+        <li><b>Umgebung prod</b><span>Mit Freigabe beim Release-Tag (#24)</span></li>
+        <li><b>Zweiter Account</b><span>Deploy in den Account des Teampartners (#5)</span></li>
+      </ul>
+    </section>
+  </div>
+
+  <p class="foot">
+    Quelle: Live-Prüfungen in dev zwischen 09. und 14.11.2026 (Lambda-Aufrufe, CloudFront, Logs), Repository und
+    GitHub-Issues. Geprüft wurde nur der Referenz-Account. Kurse und Termine folgen ADR 0013. Die Lambda
+    <code>health</code> ist ein technischer Test und gehört nicht zu den Fachfunktionen.
+  </p>
+</main>
