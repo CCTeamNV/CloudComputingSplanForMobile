@@ -5,7 +5,7 @@ import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda'
 import type { LecturerSessionPatch, Session } from '../../shared/api.ts'
 import { coursesOfLecturer, db, getCourse, getSession, tableName, toSession } from '../../shared/db.ts'
-import { error, groupsOf, json, userIdOf, type Result } from '../../shared/http.ts'
+import { bodyObject, error, groupsOf, json, userIdOf, type Result } from '../../shared/http.ts'
 import { isSessionId, keys } from '../../shared/keys.ts'
 
 const logger = new Logger({ serviceName: 'lecturer' })
@@ -15,15 +15,8 @@ tracer.captureAWSv3Client(db)
 const COURSE_ID = /^[a-z0-9-]{1,64}$/
 
 /** Validates the body against LecturerSessionPatch; unknown fields (e.g. start/end) are rejected. */
-export const parsePatch = (body: string | undefined): LecturerSessionPatch | string => {
-  let patch: unknown
-  try {
-    patch = JSON.parse(body ?? '')
-  } catch {
-    return 'Body must be JSON'
-  }
-  if (typeof patch !== 'object' || patch === null || Array.isArray(patch)) return 'Body must be an object'
-  const p = patch as Record<string, unknown>
+export const parsePatch = (p: Record<string, unknown> | string): LecturerSessionPatch | string => {
+  if (typeof p === 'string') return p
   const unknown = Object.keys(p).filter((k) => !['cancelled', 'room', 'note'].includes(k))
   if (unknown.length) return `Not changeable here: ${unknown.join(', ')}`
   if (Object.keys(p).length === 0) return 'Nothing to change'
@@ -70,7 +63,12 @@ export const updateFor = (current: Session, patch: LecturerSessionPatch, now: st
   }
 }
 
-const updateSession = async (userId: string, courseId: string, sessionId: string, body: string | undefined) => {
+const updateSession = async (
+  userId: string,
+  courseId: string,
+  sessionId: string,
+  body: Record<string, unknown> | string,
+) => {
   if (!COURSE_ID.test(courseId) || !isSessionId(sessionId)) return error(404, 'not_found', 'Session not found')
   const course = await getCourse(courseId)
   if (!course) return error(404, 'not_found', 'Session not found')
@@ -102,12 +100,7 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer): P
       case 'GET /lecturer/courses':
         return json(200, { items: await coursesOfLecturer(userId) })
       case 'PATCH /lecturer/courses/{courseId}/sessions/{sessionId}':
-        return await updateSession(
-          userId,
-          courseId,
-          sessionId,
-          event.isBase64Encoded && event.body ? Buffer.from(event.body, 'base64').toString() : event.body,
-        )
+        return await updateSession(userId, courseId, sessionId, bodyObject(event))
       default:
         return error(404, 'not_found', 'Route not found')
     }

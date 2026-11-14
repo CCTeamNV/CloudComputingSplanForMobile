@@ -42,18 +42,32 @@ export const isSessionId = (value: string): boolean => SESSION_ID.test(value)
 
 const TIME_ZONE = 'Europe/Berlin'
 
+/** Offset of German local time from UTC at `instant`, in ms (+1 h in winter, +2 h in summer). */
+export const berlinOffsetMs = (instant: Date): number => {
+  const offset = new Intl.DateTimeFormat('en', { timeZone: TIME_ZONE, timeZoneName: 'longOffset' })
+    .formatToParts(instant)
+    .find((p) => p.type === 'timeZoneName')!.value // "GMT+01:00" or "GMT+02:00"
+  const [, sign, hh, mm] = /GMT([+-])(\d{2}):(\d{2})/.exec(offset)!
+  return (sign === '-' ? -1 : 1) * (Number(hh) * 60 + Number(mm)) * 60_000
+}
+
 /** UTC instant of local midnight in Germany for a `yyyy-MM-dd` date (handles DST). */
 export const berlinMidnight = (date: string): Date => {
   const utcMidnight = new Date(`${date}T00:00:00Z`)
   if (Number.isNaN(utcMidnight.getTime()) || utcMidnight.toISOString().slice(0, 10) !== date) {
     throw new Error('invalid date')
   }
-  const offset = new Intl.DateTimeFormat('en', { timeZone: TIME_ZONE, timeZoneName: 'longOffset' })
-    .formatToParts(utcMidnight)
-    .find((p) => p.type === 'timeZoneName')!.value // "GMT+01:00" or "GMT+02:00"
-  const [, sign, hh, mm] = /GMT([+-])(\d{2}):(\d{2})/.exec(offset)!
-  const offsetMs = (sign === '-' ? -1 : 1) * (Number(hh) * 60 + Number(mm)) * 60_000
-  return new Date(utcMidnight.getTime() - offsetMs)
+  return new Date(utcMidnight.getTime() - berlinOffsetMs(utcMidnight))
+}
+
+/** Local German calendar day (`yyyy-MM-dd`) of an instant. */
+export const berlinDate = (instant: Date): string =>
+  new Date(instant.getTime() + berlinOffsetMs(instant)).toISOString().slice(0, 10)
+
+/** Same German wall-clock time `weeks` weeks later, across DST changes. */
+export const addWeeksBerlin = (instant: Date, weeks: number): Date => {
+  const naive = new Date(instant.getTime() + weeks * 7 * 86_400_000)
+  return new Date(naive.getTime() + berlinOffsetMs(instant) - berlinOffsetMs(naive))
 }
 
 /**

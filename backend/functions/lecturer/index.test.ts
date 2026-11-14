@@ -2,6 +2,7 @@ import { beforeEach, mock, test } from 'node:test'
 import assert from 'node:assert/strict'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyStructuredResultV2 } from 'aws-lambda'
 import { db } from '../../shared/db.ts'
+import { bodyObject } from '../../shared/http.ts'
 import { handler, parsePatch } from './index.ts'
 
 process.env.TABLE_NAME = 'table'
@@ -157,13 +158,15 @@ test('unknown course or session is 404, invalid ids too', async () => {
   assert.equal((await call(PATCH, 'lect-a', '[lecturer]', { cancelled: true }, 'cc', 'bad')).status, 404)
 })
 
+const body = (b: string) => ({ body: b }) as unknown as APIGatewayProxyEventV2WithJWTAuthorizer
+
 test('body validation follows LecturerSessionPatch', () => {
-  assert.equal(typeof parsePatch('{}'), 'string')
-  assert.equal(typeof parsePatch('not json'), 'string')
-  assert.equal(typeof parsePatch('[]'), 'string')
-  assert.equal(typeof parsePatch('{"cancelled":"yes"}'), 'string')
-  assert.equal(typeof parsePatch('{"room":""}'), 'string')
-  assert.equal(typeof parsePatch(JSON.stringify({ room: 'x'.repeat(41) })), 'string')
-  assert.equal(typeof parsePatch(JSON.stringify({ note: 'x'.repeat(201) })), 'string')
-  assert.deepEqual(parsePatch('{"cancelled":true,"note":null}'), { cancelled: true, note: null })
+  assert.equal(typeof parsePatch(bodyObject(body('{}'))), 'string')
+  assert.equal(typeof parsePatch(bodyObject(body('not json'))), 'string')
+  assert.equal(typeof parsePatch(bodyObject(body('[]'))), 'string')
+  assert.equal(typeof parsePatch(bodyObject(body('{"cancelled":"yes"}'))), 'string')
+  assert.equal(typeof parsePatch(bodyObject(body('{"room":""}'))), 'string')
+  assert.equal(typeof parsePatch({ room: 'x'.repeat(41) }), 'string')
+  assert.equal(typeof parsePatch({ note: 'x'.repeat(201) }), 'string')
+  assert.deepEqual(parsePatch(bodyObject(body('{"cancelled":true,"note":null}'))), { cancelled: true, note: null })
 })

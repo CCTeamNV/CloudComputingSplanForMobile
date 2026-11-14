@@ -86,3 +86,26 @@ resource "aws_cognito_user_pool_client" "web" {
     refresh_token = "days"
   }
 }
+
+# Role management by Lambda admin (ADR 0006): only this pool, only the four calls it makes.
+data "aws_iam_policy_document" "role_admin" {
+  count = var.role_admin_role == null ? 0 : 1
+
+  statement {
+    actions = [
+      "cognito-idp:ListUsers",
+      "cognito-idp:AdminListGroupsForUser",
+      "cognito-idp:AdminAddUserToGroup",
+      "cognito-idp:AdminRemoveUserFromGroup",
+    ]
+    resources = [aws_cognito_user_pool.this.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "role_admin" {
+  count = var.role_admin_role == null ? 0 : 1
+
+  name   = "cognito-roles"
+  role   = var.role_admin_role
+  policy = data.aws_iam_policy_document.role_admin[0].json
+}

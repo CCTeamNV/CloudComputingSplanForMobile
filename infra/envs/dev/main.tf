@@ -49,6 +49,18 @@ module "api" {
     # Stream trigger, writes /catalog/*.json (ADR 0013); the rebuild of all files needs more than 10 s.
     catalog  = { timeout = 120, environment = { CATALOG_BUCKET = module.frontend.bucket } }
     lecturer = { routes = ["GET /lecturer/courses", "PATCH /lecturer/courses/{courseId}/sessions/{sessionId}"] }
+    admin = {
+      routes = [
+        "POST /admin/courses",
+        "PUT /admin/courses/{courseId}",
+        "DELETE /admin/courses/{courseId}",
+        "POST /admin/courses/{courseId}/sessions",
+        "PUT /admin/courses/{courseId}/sessions/{sessionId}",
+        "DELETE /admin/courses/{courseId}/sessions/{sessionId}",
+        "GET /admin/users",
+        "PUT /admin/users/{userId}/roles",
+      ]
+    }
     student = {
       routes = ["GET /me/subscriptions", "PUT /me/subscriptions/{courseId}", "DELETE /me/subscriptions/{courseId}"]
       environment = {
@@ -75,6 +87,7 @@ module "auth" {
   env                   = "dev"
   pre_signup_lambda_arn = module.api.function_arns["pre-signup"]
   callback_urls         = ["${module.frontend.url}/", "http://localhost:5173/"]
+  role_admin_role       = module.api.role_names.admin
 }
 
 module "data" {
@@ -84,7 +97,9 @@ module "data" {
 
   # DynamoDB actions per Lambda (ADR 0008)
   access = {
-    catalog  = { role = module.api.role_names.catalog, actions = ["dynamodb:Query", "dynamodb:GetItem"] }
+    catalog = { role = module.api.role_names.catalog, actions = ["dynamodb:Query", "dynamodb:GetItem"] }
+    # TransactWriteItems needs PutItem/DeleteItem, it is no action of its own.
+    admin    = { role = module.api.role_names.admin, actions = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:BatchWriteItem"] }
     lecturer = { role = module.api.role_names.lecturer, actions = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem"] }
     student  = { role = module.api.role_names.student, actions = ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"] }
   }

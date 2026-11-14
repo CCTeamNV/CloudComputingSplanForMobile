@@ -61,6 +61,16 @@ export const listPrograms = async (): Promise<Program[]> =>
     await queryAll({ KeyConditionExpression: 'PK = :pk', ExpressionAttributeValues: { ':pk': keys.programs().PK } })
   ).map(toProgram)
 
+/** A study program, or undefined if it does not exist. */
+export const getProgram = async (programId: string): Promise<Program | undefined> => {
+  const { Item } = await db.send(new GetCommand({ TableName: tableName(), Key: keys.program(programId) }))
+  return Item && toProgram(Item)
+}
+
+/** All items of a course: META and every session (for rename and delete). */
+export const courseItems = (courseId: string): Promise<Item[]> =>
+  queryAll({ KeyConditionExpression: 'PK = :pk', ExpressionAttributeValues: { ':pk': keys.course(courseId).PK } })
+
 /** A course, or undefined if it does not exist. */
 export const getCourse = async (courseId: string): Promise<Course | undefined> => {
   const { Item } = await db.send(new GetCommand({ TableName: tableName(), Key: keys.course(courseId) }))
