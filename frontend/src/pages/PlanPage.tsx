@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CircleX, History, MapPinned } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import {
@@ -7,6 +7,7 @@ import {
   berlinTime,
   currentOrNext,
   loadSchedule,
+  recentlyChanged,
   sessionsOn,
   weekDays,
   type PublicSession,
@@ -32,29 +33,61 @@ const asDate = (day: string) => new Date(`${day}T12:00:00Z`)
 
 type Load = { state: 'loading' } | { state: 'error' } | { state: 'ok'; sessions: PublicSession[] }
 
-function SessionCard({ s, highlight, compact }: { s: PublicSession; highlight?: string; compact?: boolean }) {
+function SessionCard({
+  s,
+  highlight,
+  compact,
+  now,
+}: {
+  s: PublicSession
+  highlight?: string
+  compact?: boolean
+  now: Date
+}) {
+  // Every marking has an icon and a word, never colour alone (WCAG 1.4.1); no opacity, to keep AA contrast.
   return (
     <li
       className={cn(
         'rounded-lg border p-3',
         highlight && 'border-primary ring-1 ring-primary',
-        s.cancelled && 'opacity-70',
+        s.cancelled && 'border-destructive/60 bg-destructive/5',
         compact && 'p-2',
       )}
     >
       <p className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
-        <span>
+        <span className={cn(s.cancelled && 'line-through')}>
           {berlinTime(s.start)} – {berlinTime(s.end)}
         </span>
         {highlight && <span className="text-xs font-medium text-primary">{highlight}</span>}
       </p>
       <p className={cn('font-medium', s.cancelled && 'line-through')}>{s.courseName}</p>
-      <p className="text-sm">
-        Raum {s.room}
-        {s.originalRoom && <span className="text-muted-foreground"> (statt {s.originalRoom})</span>}
-        {!compact && <span className="text-muted-foreground"> · {KIND[s.kind] ?? s.kind}</span>}
-      </p>
-      {s.cancelled && <p className="mt-1 text-sm font-medium text-destructive">Fällt aus</p>}
+      {s.cancelled ? (
+        <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-destructive">
+          <CircleX aria-hidden className="size-4 shrink-0" />
+          Fällt aus
+        </p>
+      ) : s.originalRoom ? (
+        <p className="mt-0.5 flex items-start gap-1.5 text-sm font-medium">
+          <MapPinned aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>
+            Raumänderung: {s.room}
+            <span className="font-normal text-muted-foreground">
+              , vorher <span className="line-through">{s.originalRoom}</span>
+            </span>
+          </span>
+        </p>
+      ) : (
+        <p className="text-sm">
+          Raum {s.room}
+          {!compact && <span className="text-muted-foreground"> · {KIND[s.kind] ?? s.kind}</span>}
+        </p>
+      )}
+      {recentlyChanged(s, now) && (
+        <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <History aria-hidden className="size-3.5 shrink-0" />
+          Kürzlich geändert
+        </p>
+      )}
     </li>
   )
 }
@@ -186,6 +219,7 @@ export default function PlanPage() {
                         key={`${s.courseId}/${s.id}`}
                         s={s}
                         compact={view === 'week'}
+                        now={now}
                         highlight={
                           s === highlight ? (s.start <= now.toISOString() ? 'Jetzt' : 'Als Nächstes') : undefined
                         }
