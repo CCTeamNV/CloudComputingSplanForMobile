@@ -4,7 +4,7 @@ import { createVerify, generateKeyPairSync } from 'node:crypto'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyStructuredResultV2 } from 'aws-lambda'
 import { db } from '../../shared/db.ts'
 import { icalTokenHash } from '../../shared/keys.ts'
-import { catalogAccess, handler, MAX_SUBSCRIPTIONS, ssm } from './index.ts'
+import { catalogAccess, cognito, handler, MAX_SUBSCRIPTIONS, ssm } from './index.ts'
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
 const pem = privateKey.export({ type: 'pkcs1', format: 'pem' }).toString()
@@ -66,7 +66,12 @@ const call = async (routeKey: string, sub: string, courseId?: string) => {
   const result = (await handler({
     routeKey,
     pathParameters: courseId === undefined ? undefined : { courseId },
-    requestContext: { domainName: 'api.example.com', authorizer: { jwt: { claims: { sub }, scopes: [] } } },
+    requestContext: {
+      domainName: 'api.example.com',
+      authorizer: {
+        jwt: { claims: { sub, iss: 'https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_TEST' }, scopes: [] },
+      },
+    },
   } as unknown as APIGatewayProxyEventV2WithJWTAuthorizer)) as APIGatewayProxyStructuredResultV2
   return { status: result.statusCode, body: result.body ? JSON.parse(result.body) : undefined, raw: result.body ?? '' }
 }
@@ -180,4 +185,51 @@ test('iCal token: returned once, stored only as hash, rotation and revocation in
   assert.equal(lookups().length, 1, "only user B's token is left")
   assert.ok(!table.some((i) => i.PK === 'USER#user-a' && i.SK === 'ICAL'))
   assert.equal((await call('DELETE /me/ical-token', 'user-a')).status, 204) // idempotent
+})
+
+test('DELETE /me removes all USER# items, the iCal lookup and then the Cognito user', async () => {
+  const deleted: { pool?: string; user?: string; itemsLeft: number }[] = []
+  mock.method(cognito, 'send', async ({ input }: { input: { UserPoolId: string; Username: string } }) => {
+    // Cognito comes last: by now no data of the user may be left.
+    deleted.push({
+      pool: input.UserPoolId,
+      user: input.Username,
+      itemsLeft: table.filter((i) => i.PK === 'USER#user-a').length,
+    })
+    return {}
+  })
+  await put('user-a', 'cc')
+  await put('user-a', 'swa')
+  await call('POST /me/ical-token', 'user-a')
+  await put('user-b', 'cc')
+  await call('POST /me/ical-token', 'user-b')
+  const lookupOfB = table.find((i) => i.PK === 'USER#user-b' && i.SK === 'ICAL')!.tokenHash
+
+  assert.equal((await call('DELETE /me', 'user-a')).status, 204)
+  assert.ok(!table.some((i) => i.PK === 'USER#user-a'))
+  assert.deepEqual(
+    table.filter((i) => i.PK.startsWith('ICAL#')).map((i) => i.PK),
+    [`ICAL#${lookupOfB}`],
+    "only user B's iCal lookup is left",
+  )
+  assert.equal(table.filter((i) => i.PK === 'USER#user-b').length, 2)
+  assert.deepEqual(deleted, [{ pool: 'eu-central-1_TEST', user: 'user-a', itemsLeft: 0 }])
+
+  // A retry after the user is already gone still succeeds.
+  mock.method(cognito, 'send', async () => {
+    throw Object.assign(new Error('gone'), { name: 'UserNotFoundException' })
+  })
+  assert.equal((await call('DELETE /me', 'user-a')).status, 204)
+})
+
+test('DELETE /me keeps the Cognito user when the data could not be deleted', async () => {
+  const cognitoCalls = mock.method(cognito, 'send', async () => {
+    throw Object.assign(new Error('gone'), { name: 'UserNotFoundException' })
+  })
+  await put('user-a', 'cc')
+  mock.method(db, 'send', async () => {
+    throw Object.assign(new Error('boom'), { name: 'InternalServerError' })
+  })
+  assert.equal((await call('DELETE /me', 'user-a')).status, 500)
+  assert.equal(cognitoCalls.mock.callCount(), 0, 'no Cognito deletion while data is left')
 })

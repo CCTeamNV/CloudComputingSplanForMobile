@@ -24,3 +24,9 @@ variable "role_admin_role" {
   type        = string
   default     = null
 }
+
+variable "account_deleter_role" {
+  description = "IAM role name of the Lambda that deletes the caller's own account (student); may only delete users in this pool."
+  type        = string
+  default     = null
+}

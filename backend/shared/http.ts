@@ -45,3 +45,15 @@ export const bodyObject = (event: APIGatewayProxyEventV2WithJWTAuthorizer): Reco
     ? (value as Record<string, unknown>)
     : 'Body must be an object'
 }
+
+/**
+ * User pool from the token's issuer (`https://cognito-idp.<region>.amazonaws.com/<poolId>`), already checked by
+ * the API Gateway JWT authorizer. An env var would create a Terraform cycle (pool -> pre-signup Lambda -> env).
+ */
+export const userPoolOf = (event: APIGatewayProxyEventV2WithJWTAuthorizer): string => {
+  const pool = String(event.requestContext.authorizer.jwt.claims.iss ?? '')
+    .split('/')
+    .pop()
+  if (!pool) throw new Error('token without issuer')
+  return pool
+}

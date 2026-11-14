@@ -109,3 +109,21 @@ resource "aws_iam_role_policy" "role_admin" {
   role   = var.role_admin_role
   policy = data.aws_iam_policy_document.role_admin[0].json
 }
+
+# Account deletion by Lambda student (GDPR, #25): only AdminDeleteUser, only this pool.
+data "aws_iam_policy_document" "account_deleter" {
+  count = var.account_deleter_role == null ? 0 : 1
+
+  statement {
+    actions   = ["cognito-idp:AdminDeleteUser"]
+    resources = [aws_cognito_user_pool.this.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "account_deleter" {
+  count = var.account_deleter_role == null ? 0 : 1
+
+  name   = "cognito-delete-account"
+  role   = var.account_deleter_role
+  policy = data.aws_iam_policy_document.account_deleter[0].json
+}

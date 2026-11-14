@@ -20,7 +20,7 @@ import {
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda'
 import type { Course, CourseInput, Session, SessionInput } from '../../shared/api.ts'
 import { courseItems, db, getCourse, getProgram, getSession, tableName, toCourse, toSession } from '../../shared/db.ts'
-import { bodyObject, error, groupsOf, json, noContent, userIdOf, type Result } from '../../shared/http.ts'
+import { bodyObject, error, groupsOf, json, noContent, userIdOf, userPoolOf, type Result } from '../../shared/http.ts'
 import {
   addWeeksBerlin,
   berlinDate,
@@ -39,18 +39,6 @@ tracer.captureAWSv3Client(db)
 const ROLES = ['lecturer', 'admin'] as const
 const KINDS = ['lecture', 'lab', 'exercise', 'exam']
 const COURSE_ID = /^[a-z0-9-]{1,64}$/
-
-/**
- * User pool from the token's issuer (`https://cognito-idp.<region>.amazonaws.com/<poolId>`), already checked by
- * the API Gateway JWT authorizer. An env var would create a Terraform cycle (pool -> pre-signup Lambda -> env).
- */
-export const userPoolOf = (event: APIGatewayProxyEventV2WithJWTAuthorizer): string => {
-  const pool = String(event.requestContext.authorizer.jwt.claims.iss ?? '')
-    .split('/')
-    .pop()
-  if (!pool) throw new Error('token without issuer')
-  return pool
-}
 
 class BadRequest extends Error {}
 const bad = (message: string): never => {

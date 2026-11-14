@@ -4,15 +4,17 @@ import { Logger } from '@aws-lambda-powertools/logger'
 import { Tracer } from '@aws-lambda-powertools/tracer'
 import { DeleteCommand, GetCommand, PutCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb'
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm'
+import { AdminDeleteUserCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda'
 import type { Course } from '../../shared/api.ts'
-import { db, getCourse, subscribedCourseIds, tableName } from '../../shared/db.ts'
-import { error, json, noContent, userIdOf, type Result } from '../../shared/http.ts'
+import { db, getCourse, subscribedCourseIds, tableName, userItems } from '../../shared/db.ts'
+import { error, json, noContent, userIdOf, userPoolOf, type Result } from '../../shared/http.ts'
 import { icalTokenHash, keys } from '../../shared/keys.ts'
 
 const logger = new Logger({ serviceName: 'student' })
 const tracer = new Tracer({ serviceName: 'student' })
 export const ssm = tracer.captureAWSv3Client(new SSMClient({}))
+export const cognito = tracer.captureAWSv3Client(new CognitoIdentityProviderClient({}))
 tracer.captureAWSv3Client(db)
 
 export const MAX_SUBSCRIPTIONS = 50
@@ -126,6 +128,28 @@ const revokeIcalToken = async (userId: string) => {
   return noContent
 }
 
+// --- Account deletion (GDPR) ---
+
+/**
+ * Data first, Cognito user last: if anything fails, the account still exists and the user can simply retry,
+ * and no personal data is left behind without an account.
+ */
+const deleteMe = async (userId: string, pool: string) => {
+  const items = await userItems(userId)
+  const tokenHash = items.find((i) => i.SK === 'ICAL')?.tokenHash as string | undefined
+  if (tokenHash) await db.send(new DeleteCommand({ TableName: tableName(), Key: keys.icalLookup(tokenHash) }))
+  // At most 50 subscriptions + the iCal item, so single deletes are fine.
+  await Promise.all(
+    items.map((i) => db.send(new DeleteCommand({ TableName: tableName(), Key: { PK: i.PK, SK: i.SK } }))),
+  )
+  try {
+    await cognito.send(new AdminDeleteUserCommand({ UserPoolId: pool, Username: userId }))
+  } catch (err) {
+    if ((err as Error).name !== 'UserNotFoundException') throw err // already gone: deletion is idempotent
+  }
+  return noContent
+}
+
 export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<Result> => {
   const userId = userIdOf(event)
   const courseId = event.pathParameters?.courseId ?? ''
@@ -143,6 +167,8 @@ export const handler = async (event: APIGatewayProxyEventV2WithJWTAuthorizer): P
         return await rotateIcalToken(userId, event.requestContext.domainName)
       case 'DELETE /me/ical-token':
         return await revokeIcalToken(userId)
+      case 'DELETE /me':
+        return await deleteMe(userId, userPoolOf(event))
       default:
         return error(404, 'not_found', 'Route not found')
     }
