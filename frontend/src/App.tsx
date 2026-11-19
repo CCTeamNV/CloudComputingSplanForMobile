@@ -1,5 +1,5 @@
 import { CalendarDays, Search, Settings2, UserRound } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useLocation } from 'react-router'
 import { currentSession } from '@/auth'
 import { cn } from '@/lib/utils'
 
@@ -13,8 +13,10 @@ const nav = [
 
 export default function App() {
   const roles = currentSession()?.roles ?? []
+  // Tables in the admin area need the width of a desktop screen (#20).
+  const wide = useLocation().pathname.startsWith('/admin')
   return (
-    <div className="mx-auto flex min-h-dvh max-w-2xl flex-col">
+    <div className={cn('mx-auto flex min-h-dvh flex-col', wide ? 'max-w-6xl' : 'max-w-2xl')}>
       <header className="sticky top-0 z-10 border-b bg-background/95 px-4 py-3 backdrop-blur">
         <h1 className="text-lg font-semibold">SPLAN Mobile</h1>
       </header>
