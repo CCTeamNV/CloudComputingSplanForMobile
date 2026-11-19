@@ -1,4 +1,6 @@
 import { currentSession } from '@/auth'
+import AdminCourses from './AdminCourses'
+import AdminRoles from './AdminRoles'
 import LecturerSessions from './LecturerSessions'
 
 // Lazy chunk for lecturers and admins; what they may do is checked by the backend (ADR 0006).
@@ -19,10 +21,19 @@ export default function AdminPage() {
         </div>
       )}
       {roles.includes('admin') && (
-        <div className="space-y-2">
-          <h3 className="font-medium">Kurse, Termine und Rollen</h3>
-          <p className="text-sm text-muted-foreground">Folgt mit #20.</p>
-        </div>
+        <>
+          <div className="space-y-3">
+            <h3 className="font-medium">Kurse und Termine</h3>
+            <p className="text-sm text-muted-foreground">
+              Änderungen erscheinen nach etwa 2 Minuten in den Plänen; hier siehst du sie sofort.
+            </p>
+            <AdminCourses />
+          </div>
+          <div className="space-y-3">
+            <h3 className="font-medium">Rollen</h3>
+            <AdminRoles />
+          </div>
+        </>
       )}
     </section>
   )
