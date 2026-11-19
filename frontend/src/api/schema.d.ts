@@ -207,7 +207,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Replace a course */
+        /**
+         * Replace a course
+         * @description Without `lecturerId` in the body the course keeps its lecturer (`lecturerId` and `lecturerName`), because the admin UI reads courses from the static files, which lack `lecturerId`. `null` removes the lecturer.
+         */
         put: operations["updateCourse"];
         post?: never;
         /** Delete a course with all its sessions */

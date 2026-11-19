@@ -233,6 +233,18 @@ test('removing the lecturer drops the course from GSI2', async () => {
   assert.ok(!('GSI2PK' in meta) && !('lecturerId' in meta))
 })
 
+test('PUT without lecturerId keeps the lecturer', async () => {
+  table.find((i) => i.PK === 'COURSE#cc' && i.SK === 'META')!.lecturerName = 'Prof. Beispiel'
+  const { status, body } = await call('PUT /admin/courses/{courseId}', {
+    path: { courseId: 'cc' },
+    body: { name: 'Cloud Engineering', programId: 'seb', semester: 7 },
+  })
+  assert.equal(status, 200)
+  assert.equal(body.lecturerId, 'lect-1')
+  assert.equal(body.lecturerName, 'Prof. Beispiel')
+  assert.equal(table.find((i) => i.PK === 'COURSE#cc' && i.SK === 'META')!.GSI2PK, 'LECTURER#lect-1')
+})
+
 test('moving the start gives a new sessionId and keeps the lecturer status', async () => {
   const { status, body } = await call('PUT /admin/courses/{courseId}/sessions/{sessionId}', {
     path: { courseId: 'cc', sessionId: '20261102T0700Z-aaaaaa' },
