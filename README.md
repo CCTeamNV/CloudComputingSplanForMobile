@@ -194,20 +194,32 @@ Die Hochschul-Mail ist danach wieder frei für eine neue Registrierung.
 
 ## Monitoring
 
-CloudWatch und X-Ray ([ADR 0010](docs/decisions/0010-cloudwatch-xray-monitoring.md)):
+CloudWatch und X-Ray ([ADR 0010](docs/decisions/0010-cloudwatch-xray-monitoring.md)), Modul `infra/modules/monitoring`:
 
-- **Logs:** strukturiertes JSON (Powertools), Korrelation über Request-ID, 30 Tage Retention
-- **Tracing:** X-Ray von API Gateway über Lambda bis DynamoDB
-- **Dashboard** (eins pro Umgebung, per Terraform): Requests, 4xx/5xx, p50/p95/p99-Latenz, Lambda-Concurrency,
-  Throttles, Cold Starts, DynamoDB-Consumed-Capacity
-- **Alarme → SNS → E-Mail:**
+- **Logs:** strukturiertes JSON (Powertools), 30 Tage Retention, keine personenbezogenen Daten: Fehler werden nur mit
+  Route und Fehlermeldung geloggt, Access-Logs enthalten den `routeKey` statt des Pfads (iCal-Token, ADR 0007).
+- **Tracing:** X-Ray ab der Lambda bis DynamoDB, Cognito, SSM und S3 (Powertools Tracer). HTTP APIs unterstützen kein
+  X-Ray; den API-Gateway-Teil zeigen Access-Logs und Metriken.
+- **Dashboard** `splan-<env>`: Alarmstatus, Requests/4xx/5xx, Latenz p50/p95/p99, Lambda-Concurrency, Errors und
+  Throttles, Cold Starts (Init-Dauer aus den Logs), IteratorAge des Catalog-Publishers, DynamoDB-Kapazität und Throttles,
+  fachliche Kennzahlen (neue Abos, abgesagte Termine; Powertools Metrics).
+- **Alarme → SNS-Topic `splan-alerts` → E-Mail.** Das Topic liegt in `infra/bootstrap` (eins pro Account), damit die
+  Subscription nur einmal bestätigt werden muss und `destroy`/`apply` der Umgebungen übersteht.
 
-| Alarm | Schwelle (vorläufig) |
-|---|---|
-| API 5xx-Rate | > 1 % über 5 min |
-| API p95-Latenz | > 1 s über 5 min |
-| Lambda Errors / Throttles | > 0 über 5 min |
-| AWS Budget | 10 / 25 / 50 € |
+| Alarm | Schwelle | Warum |
+|---|---|---|
+| API 5xx-Rate | > 1 % über 5 min | Fehler aller API-Lambdas, auch Timeouts und Throttles |
+| API p95-Latenz | > 1 s über 5 min | Nutzer merken es |
+| Catalog-Publisher Errors | > 0 über 5 min | kein API davor, sonst unbemerkt |
+| Catalog IteratorAge | > 5 min | Änderungen kommen nicht mehr in den statischen Dateien an |
+| AWS Budget | 20 / 50 / 100 % von 50 $ | in `infra/bootstrap` |
+
+Free Tier: 10 Alarm-Metriken pro Account für dev und prod zusammen, also 5 pro Umgebung (die 5xx-Rate zählt doppelt).
+Lambda-Errors und -Throttles der API-Funktionen kommen als 5xx an und stehen im Dashboard, daher kein eigener Alarm.
+Dashboards: 2 von 3 freien, fachliche Metriken: 4 von 10 freien.
+
+**Alarm testen** (dev): `aws lambda invoke --function-name splan-dev-catalog --payload '{"Records":1}' --cli-binary-format raw-in-base64-out /dev/null`
+lässt den Publisher scheitern; die Mail kommt nach spätestens etwa 5–10 min, die OK-Mail danach.
 
 - TODO: Screenshot Dashboard, Beispiel-Trace, ausgelöster Alarm
 

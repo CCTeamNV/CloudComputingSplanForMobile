@@ -83,7 +83,7 @@ module "api" {
   jwt_authorizer = { issuer = module.auth.issuer, audience = [module.auth.client_id] }
   public_routes  = ["GET /health", "GET /ical/{token}"]
 
-  environment = { TABLE_NAME = module.data.table_name }
+  environment = { TABLE_NAME = module.data.table_name, POWERTOOLS_METRICS_NAMESPACE = "splan-dev" }
 
   throttle_rate_limit  = 200
   throttle_burst_limit = 400
@@ -138,6 +138,20 @@ module "frontend" {
     userPoolClientId = module.auth.client_id
     authDomain       = module.auth.domain_url
   }
+}
+
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  env               = "dev"
+  api_id            = module.api.api_id
+  function_names    = module.api.function_names
+  table_name        = module.data.table_name
+  metrics_namespace = "splan-dev"
+}
+
+output "dashboard_url" {
+  value = module.monitoring.dashboard_url
 }
 
 output "api_url" {

@@ -17,7 +17,7 @@ variable "environments" {
 }
 
 variable "budget_email" {
-  description = "Recipient of AWS budget alerts."
+  description = "Recipient of AWS budget alerts and CloudWatch alarms (topic splan-alerts)."
   type        = string
 }
 
