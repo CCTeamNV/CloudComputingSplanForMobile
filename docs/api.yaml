@@ -279,6 +279,9 @@ paths:
     put:
       tags: [admin]
       summary: Replace a course
+      description: >-
+        Without `lecturerId` in the body the course keeps its lecturer (`lecturerId` and `lecturerName`), because the
+        admin UI reads courses from the static files, which lack `lecturerId`. `null` removes the lecturer.
       operationId: updateCourse
       requestBody:
         required: true

@@ -148,6 +148,9 @@ const updateCourse = async (pool: string, courseId: string, body: Record<string,
   const before = await getCourse(courseId)
   if (!before) return error(404, 'not_found', 'Course not found')
   const input = await parseCourse(pool, body)
+  // No lecturerId in the body: keep the lecturer (the UI edits courses from the static files, which lack it).
+  if (!('lecturerId' in body))
+    Object.assign(input, { lecturerId: before.lecturerId, lecturerName: before.lecturerName })
   await db.send(
     new PutCommand({
       TableName: tableName(),
