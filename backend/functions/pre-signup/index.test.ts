@@ -25,12 +25,20 @@ test('rejects foreign and look-alike domains', () => {
   assert.ok(!isAllowedEmail('max@hs-heilbronn.de', []))
 })
 
-const event = (email: string) =>
-  ({ request: { userAttributes: { email } }, response: {} }) as unknown as PreSignUpTriggerEvent
+const event = (email: string, triggerSource = 'PreSignUp_SignUp') =>
+  ({ triggerSource, request: { userAttributes: { email } }, response: {} }) as unknown as PreSignUpTriggerEvent
 
 test('handler passes allowed sign-ups and rejects others with a readable message', async () => {
   process.env.ALLOWED_DOMAINS = 'hs-heilbronn.de, loadtest.example.com'
   const ok = event('max@hs-heilbronn.de')
   assert.equal(await handler(ok), ok)
   await assert.rejects(handler(event('max@gmail.com')), /Hochschul-E-Mail.*@hs-heilbronn\.de/)
+})
+
+test('users created by an admin (seed, IAM) skip the domain check, self sign-up does not', async () => {
+  process.env.ALLOWED_DOMAINS = 'hs-heilbronn.de'
+  const seeded = event('admin@loadtest.example.com', 'PreSignUp_AdminCreateUser')
+  assert.equal(await handler(seeded), seeded)
+  await assert.rejects(handler(event('admin@loadtest.example.com')), /Hochschul-E-Mail/)
+  await assert.rejects(handler(event('x@loadtest.example.com', 'PreSignUp_ExternalProvider')), /Hochschul-E-Mail/)
 })

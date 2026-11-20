@@ -36,8 +36,8 @@ frontend/                React-PWA inkl. /admin-Bereich (lazy geladen)
 backend/functions/<name> je eine Lambda pro Domäne: catalog, student, lecturer, admin, ical, pre-signup
 backend/shared/          Datenmodell-Typen, DynamoDB-Zugriff
 infra/bootstrap/         State-Bucket + GitHub-OIDC-Rolle (lokaler State, 1x pro Account)
-infra/modules/           auth, api, data, frontend, monitoring, loadtest
-infra/envs/{dev,prod}/   Root-Module, je eigener State-Key
+infra/modules/           app (ganze Umgebung), auth, api, data, frontend, monitoring, loadtest
+infra/envs/{dev,prod}/   dünne Root-Module (module app + Variablen), je eigener State-Key
 loadtest/                k6-Skripte + Dockerfile
 scripts/                 Seed- und Hilfsskripte
 docs/decisions/          ADRs

@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: ['v*'] # release: deploy to prod after approval in the GitHub environment (ADR 0005)
 
 permissions:
   contents: read
@@ -43,9 +44,10 @@ jobs:
       fail-fast: false
       matrix:
         account: ${{ fromJSON(vars.AWS_ACCOUNT_IDS) }}
+        env: [dev, prod]
     defaults:
       run:
-        working-directory: infra/envs/dev
+        working-directory: infra/envs/${{ matrix.env }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -69,27 +71,31 @@ jobs:
         if: always()
         run: |
           {
-            echo "### terraform plan dev (${{ matrix.account }})"
+            echo "### terraform plan ${{ matrix.env }} (${{ matrix.account }})"
             echo '```'
             tail -c 60000 plan.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  deploy-dev:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  # main -> dev; tag v* -> prod. The apply role trusts only jobs in its GitHub environment, whose rules allow only
+  # main (dev) or tags v* with approval (prod), see infra/bootstrap/README.md.
+  deploy:
+    if: github.event_name == 'push'
     needs: test
     runs-on: ubuntu-latest
-    environment: dev
+    environment: ${{ github.ref_type == 'tag' && 'prod' || 'dev' }}
+    env:
+      ENV: ${{ github.ref_type == 'tag' && 'prod' || 'dev' }}
     strategy:
       fail-fast: false
       matrix:
         account: ${{ fromJSON(vars.AWS_ACCOUNT_IDS) }}
     concurrency:
-      group: deploy-dev-${{ matrix.account }}
+      group: deploy-${{ github.ref_type == 'tag' && 'prod' || 'dev' }}-${{ matrix.account }}
       cancel-in-progress: false
     defaults:
       run:
-        working-directory: infra/envs/dev
+        working-directory: infra/envs/${{ github.ref_type == 'tag' && 'prod' || 'dev' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -104,7 +110,7 @@ jobs:
           terraform_wrapper: false
       - uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: arn:aws:iam::${{ matrix.account }}:role/splan-gha-apply-dev
+          role-to-assume: arn:aws:iam::${{ matrix.account }}:role/splan-gha-apply-${{ env.ENV }}
           aws-region: ${{ env.AWS_REGION }}
       - run: terraform init -input=false -backend-config="bucket=splan-tfstate-${{ matrix.account }}"
       - run: terraform apply -input=false -auto-approve

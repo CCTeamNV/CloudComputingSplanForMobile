@@ -112,8 +112,9 @@ Terraform (>= 1.10) verwaltet die gesamte Infrastruktur ([ADR 0004](docs/decisio
 ```
 infra/
   bootstrap/         State-Bucket (S3, Versionierung, native Locking) + GitHub-OIDC-Rolle; lokaler State
+  modules/app        eine komplette Umgebung (verdrahtet api, auth, data, frontend, monitoring)
   modules/           auth, api, data, frontend, monitoring, loadtest
-  envs/dev, envs/prod  Root-Module mit eigenem State-Key und tfvars
+  envs/dev, envs/prod  dünne Root-Module: eigener State-Key, nur Variablen unterscheiden sich
 ```
 
 **Setup auf leerem Account** (identisch in beiden Accounts)

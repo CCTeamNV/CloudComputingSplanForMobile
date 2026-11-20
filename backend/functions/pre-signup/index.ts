@@ -16,6 +16,8 @@ export const isAllowedEmail = (email: string | undefined, domains: string[]): bo
 }
 
 export const handler = async (event: PreSignUpTriggerEvent): Promise<PreSignUpTriggerEvent> => {
+  // Users created via AdminCreateUser (seed script, needs IAM rights) skip the check; it guards self sign-up only.
+  if (event.triggerSource === 'PreSignUp_AdminCreateUser') return event
   const domains = allowedDomains()
   if (!isAllowedEmail(event.request.userAttributes.email, domains)) {
     // Cognito shows this as "PreSignUp failed with error <message>"; no address in logs.
