@@ -1,5 +1,5 @@
 // Seeds programs, courses, sessions and Cognito users into one environment. Idempotent: existing items are kept.
-// Usage: npm run seed -- --env dev [--users 10]   (SEED_PASSWORD from .env or the environment)
+// Usage: npm run seed -- --env dev [--users 10] [--reset-passwords]   (SEED_PASSWORD from .env or the environment)
 import { execFileSync } from 'node:child_process'
 import { parseArgs } from 'node:util'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
@@ -16,7 +16,12 @@ import { keys } from '../backend/shared/keys.ts'
 import { courses, isValidPassword, programs, sessionsFor, staff, testUserEmail } from './seed-plan.ts'
 
 const { values } = parseArgs({
-  options: { env: { type: 'string' }, users: { type: 'string', default: '10' } },
+  options: {
+    env: { type: 'string' },
+    users: { type: 'string', default: '10' },
+    // Sets SEED_PASSWORD on seeded users that already exist (e.g. after the password leaked); others stay untouched.
+    'reset-passwords': { type: 'boolean', default: false },
+  },
 })
 const env = values.env
 const userCount = Number(values.users)
@@ -61,8 +66,8 @@ const ensureUser = async (email: string, group?: string): Promise<string> => {
   try {
     const user = await cognito.send(new AdminGetUserCommand({ UserPoolId, Username: email }))
     id = sub(user.UserAttributes)
-    // Left over from an aborted run: created, but the password was never set.
-    if (user.UserStatus === 'FORCE_CHANGE_PASSWORD') {
+    // Left over from an aborted run (password never set), or a reset was asked for.
+    if (user.UserStatus === 'FORCE_CHANGE_PASSWORD' || values['reset-passwords']) {
       await cognito.send(
         new AdminSetUserPasswordCommand({ UserPoolId, Username: email, Password: password, Permanent: true }),
       )
