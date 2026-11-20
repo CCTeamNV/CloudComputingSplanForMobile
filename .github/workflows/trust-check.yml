@@ -1,0 +1,20 @@
+# Throwaway proof for #24: a branch/PR job must not be able to assume the prod apply role. Not to be merged.
+name: trust-check
+on: pull_request
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  assume-prod-from-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - id: assume
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::048861330600:role/splan-gha-apply-prod
+          aws-region: eu-central-1
+      - name: Expect AccessDenied
+        run: |
+          echo "assume outcome: ${{ steps.assume.outcome }}"
+          test "${{ steps.assume.outcome }}" = failure
