@@ -224,12 +224,10 @@ lässt den Publisher scheitern; die Mail kommt nach spätestens etwa 5–10 min,
 **Nachweis (dev, 20.11.2026):**
 
 - Alarm: Publisher um 10:59:58 UTC absichtlich scheitern lassen → `splan-dev-catalog-errors` um 11:01:14 MEZ auf
-  `ALARM`, SNS-Mail verschickt (nach ca. 1,5 min).
+  `ALARM` (nach ca. 1,5 min); Alarm- und OK-Mail kamen an.
 - Tracing: iCal-Abruf mit unbekanntem Token → Trace `splan-dev-ical` (Lambda) → `DynamoDB GetItem`.
 - Logs: Logs-Insights-Suche nach E-Mail-Adressen und JWTs (`eyJ…`) über alle 8 Log-Gruppen von dev, 7 Tage,
   413 Einträge: 0 Treffer.
-
-- TODO: Screenshot Dashboard, Beispiel-Trace, Alarm-Mail
 
 ## User Experience
 
