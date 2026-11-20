@@ -1,5 +1,5 @@
 // Seeds programs, courses, sessions and Cognito users into one environment. Idempotent: existing items are kept.
-// Usage: SEED_PASSWORD=... node --experimental-strip-types scripts/seed.ts --env dev [--users 10]
+// Usage: npm run seed -- --env dev [--users 10]   (SEED_PASSWORD from .env or the environment)
 import { execFileSync } from 'node:child_process'
 import { parseArgs } from 'node:util'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
