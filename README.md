@@ -239,7 +239,21 @@ React-PWA mit Vite, Tailwind und shadcn/ui ([ADR 0009](docs/decisions/0009-react
   iCal-Link mit einem Tap kopieren, installierbar als PWA.
 - **Admin-/Dozentenbereich (`/admin`, desktop-optimiert):** Tabellen und Formulare für Kurse, Termine, Rollen;
   Dozierende sehen nur ihre Kurse.
-- Barrierefreiheit: shadcn/ui basiert auf Radix (Tastatur, ARIA), Kontraste geprüft, Dark Mode.
+- **Installierbar (PWA):** Web-App-Manifest, Icons (auch maskierbar für Android), `apple-touch-icon` für iOS.
+  Ohne Service Worker; Offline-Cache ist Nice-to-have (#35). Ohne Verbindung zeigt die App einen Hinweis.
+- **Dark Mode** nach Systemeinstellung, auch für native Elemente (`color-scheme`); sichtbarer Tastaturfokus.
+- **Barrierefreiheit:** shadcn/ui basiert auf Radix (Tastatur, ARIA), Tabellen mit `caption` und Spaltenköpfen,
+  Statusmeldungen mit `role="status"`/`role="alert"`.
+
+**Lighthouse (mobil, angemeldet, Produktions-Build gegen dev, 20.11.2026):**
+
+| Seite | Accessibility | Best Practices |
+|---|---|---|
+| Plan (mit Terminen) | 100 | 100 |
+| Kurssuche | 100 | 100 |
+| Verwaltung (Admin) | 100 | 100 |
+
+Chrome meldet keine Installierbarkeits-Fehler (`Page.getInstallabilityErrors`).
 
 - TODO: Screenshots (Tagesansicht, Wochenansicht, Kurs abonnieren, Admin, Dozent)
 
