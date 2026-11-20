@@ -62,7 +62,7 @@ npm run dev -w frontend     # lokales Frontend gegen dev-API
 npm test --workspaces
 
 # Testdaten (idempotent, nach terraform apply; Passwort für alle Seed-User, nicht ins Repo)
-SEED_PASSWORD='...' npm run seed -- --env dev [--users 10]
+npm run seed -- --env dev [--users 10]   # SEED_PASSWORD aus .env (Vorlage: .env.example)
 npm run lint                # oxlint (Warnungen = Fehler) + Prettier-Check
 npm run format              # Prettier schreibt
 ```

@@ -15,6 +15,6 @@
   "scripts": {
     "lint": "oxlint --deny-warnings && prettier --check .",
     "format": "prettier --write .",
-    "seed": "node --experimental-strip-types scripts/seed.ts"
+    "seed": "node --env-file-if-exists=.env --experimental-strip-types scripts/seed.ts"
   }
 }
