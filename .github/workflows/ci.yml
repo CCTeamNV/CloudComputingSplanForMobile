@@ -9,6 +9,11 @@ permissions:
   contents: read
   id-token: write # OIDC to AWS, no access keys (ADR 0005)
 
+# Explicit bash runs with -o pipefail, so `terraform plan | tee` fails when plan fails.
+defaults:
+  run:
+    shell: bash
+
 env:
   TF_VERSION: 1.16.4
   AWS_REGION: eu-central-1

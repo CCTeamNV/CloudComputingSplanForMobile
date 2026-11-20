@@ -212,3 +212,17 @@ resource "aws_budgets_budget" "monthly" {
     }
   }
 }
+
+# --- Alarm topic (account-wide, shared by dev and prod) ---
+# Lives here so the email subscription is confirmed once and survives destroy/apply of the envs.
+# Unencrypted: CloudWatch alarms cannot publish to a topic with the AWS managed SNS key; alarms hold no personal data.
+
+resource "aws_sns_topic" "alerts" {
+  name = "splan-alerts"
+}
+
+resource "aws_sns_topic_subscription" "alerts_email" {
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.budget_email
+}

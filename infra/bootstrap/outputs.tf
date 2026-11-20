@@ -12,3 +12,8 @@ output "apply_role_arns" {
   description = "GitHub environment variable AWS_APPLY_ROLE_ARN, per environment."
   value       = { for env, role in aws_iam_role.apply : env => role.arn }
 }
+
+output "alerts_topic_arn" {
+  description = "Read by infra/modules/monitoring by name (splan-alerts)."
+  value       = aws_sns_topic.alerts.arn
+}

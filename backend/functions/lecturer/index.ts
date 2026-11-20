@@ -1,5 +1,6 @@
 // Lambda lecturer: own courses, cancel/restore own sessions and change their room (ADR 0006).
 import { Logger } from '@aws-lambda-powertools/logger'
+import { MetricUnit, Metrics } from '@aws-lambda-powertools/metrics'
 import { Tracer } from '@aws-lambda-powertools/tracer'
 import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda'
@@ -10,6 +11,8 @@ import { isSessionId, keys } from '../../shared/keys.ts'
 
 const logger = new Logger({ serviceName: 'lecturer' })
 const tracer = new Tracer({ serviceName: 'lecturer' })
+// Namespace per env from POWERTOOLS_METRICS_NAMESPACE (Terraform).
+const metrics = new Metrics({ serviceName: 'lecturer' })
 tracer.captureAWSv3Client(db)
 
 const COURSE_ID = /^[a-z0-9-]{1,64}$/
@@ -88,6 +91,10 @@ const updateSession = async (
       ReturnValues: 'ALL_NEW',
     }),
   )
+  if (patch.cancelled && !current.cancelled) {
+    metrics.addMetric('sessionCancelled', MetricUnit.Count, 1)
+    metrics.publishStoredMetrics()
+  }
   return json(200, toSession(Attributes!))
 }
 

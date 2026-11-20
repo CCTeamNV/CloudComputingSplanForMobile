@@ -1,6 +1,7 @@
 // Lambda student: the signed-in user's subscriptions and the signature for the static catalog files (ADR 0013).
 import { createSign, randomBytes } from 'node:crypto'
 import { Logger } from '@aws-lambda-powertools/logger'
+import { MetricUnit, Metrics } from '@aws-lambda-powertools/metrics'
 import { Tracer } from '@aws-lambda-powertools/tracer'
 import { DeleteCommand, GetCommand, PutCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb'
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm'
@@ -13,6 +14,8 @@ import { icalTokenHash, keys } from '../../shared/keys.ts'
 
 const logger = new Logger({ serviceName: 'student' })
 const tracer = new Tracer({ serviceName: 'student' })
+// Namespace per env from POWERTOOLS_METRICS_NAMESPACE (Terraform).
+const metrics = new Metrics({ serviceName: 'student' })
 export const ssm = tracer.captureAWSv3Client(new SSMClient({}))
 export const cognito = tracer.captureAWSv3Client(new CognitoIdentityProviderClient({}))
 tracer.captureAWSv3Client(db)
@@ -82,6 +85,10 @@ const subscribe = async (userId: string, courseId: string) => {
     return error(409, 'conflict', `Subscription limit (${MAX_SUBSCRIPTIONS}) reached`)
   }
   await db.send(new PutCommand({ TableName: tableName(), Item: keys.subscription(userId, courseId) }))
+  if (!ids.includes(courseId)) {
+    metrics.addMetric('subscriptionAdded', MetricUnit.Count, 1)
+    metrics.publishStoredMetrics()
+  }
   return noContent
 }
 
