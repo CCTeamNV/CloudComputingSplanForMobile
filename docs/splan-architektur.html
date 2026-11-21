@@ -235,11 +235,11 @@
 
 <main>
   <header>
-    <div class="eyebrow">Stand 14.11.2026 · Account 048861330600 · eu-central-1</div>
+    <div class="eyebrow">Stand 21.11.2026 · Account 048861330600 · eu-central-1 · dev und prod</div>
     <h1>SPLAN Mobile: Zielarchitektur und heutiger Stand</h1>
     <p class="lead">
-      Das Bild zeigt die fertige Anwendung. In dev laufen alle 7 Lambda-Funktionen, die Katalog-Dateien und das
-      Kalender-Abo. Es fehlen Monitoring, Lasttest, prod und im Frontend Login und echte Daten.
+      Das Bild zeigt die fertige Anwendung. Bis auf den Lasttest läuft alles, in dev und seit <code>v0.1.0</code> auch in
+      prod: App mit Login, alle 7 Lambda-Funktionen, Katalog-Dateien, Kalender-Abo, Dashboard und Alarme per E-Mail.
     </p>
   </header>
 
@@ -249,7 +249,7 @@
         class="arch"
         viewBox="0 0 1120 735"
         role="img"
-        aria-label="AWS-Zielarchitektur der Stundenplan-App. Webseite, Benutzerverwaltung, API Gateway, alle Lambda-Funktionen, DynamoDB mit Stream und die signierten Katalog-Dateien laufen in dev. Alarme, Dashboard, Lasttest und der Login im Frontend fehlen noch."
+        aria-label="AWS-Zielarchitektur der Stundenplan-App. Webseite mit Login, Benutzerverwaltung, API Gateway, alle Lambda-Funktionen, DynamoDB mit Stream, signierte Katalog-Dateien, X-Ray, CloudWatch-Dashboard und Alarme per SNS laufen in dev und prod. Nur der Lasttest auf ECS Fargate fehlt noch."
       >
         <defs>
           <marker
@@ -277,11 +277,11 @@
         </defs>
 
         <rect class="zone-box" x="185" y="45" width="745" height="675" rx="6" />
-        <text class="zone" x="200" y="68">AWS eu-central-1 · heute nur Umgebung dev, prod fehlt</text>
+        <text class="zone" x="200" y="68">AWS eu-central-1 · Umgebungen dev und prod, gleiches Modul</text>
 
         <!-- arrows first, boxes paint over their ends -->
         <line class="on" x1="150" y1="110" x2="239" y2="110" marker-end="url(#a-on)" />
-        <line class="off" x1="150" y1="225" x2="239" y2="225" marker-end="url(#a-off)" />
+        <line class="on" x1="150" y1="225" x2="239" y2="225" marker-end="url(#a-on)" />
         <line class="on" x1="150" y1="400" x2="239" y2="400" marker-end="url(#a-on)" />
         <line class="on" x1="150" y1="520" x2="239" y2="520" marker-end="url(#a-on)" />
         <line class="on" x1="380" y1="110" x2="469" y2="110" marker-end="url(#a-on)" />
@@ -300,7 +300,7 @@
         <line class="on" x1="640" y1="579" x2="759" y2="579" marker-end="url(#a-on)" />
         <line class="on" x1="510" y1="598" x2="510" y2="649" marker-end="url(#a-on)" />
         <line class="on" x1="600" y1="598" x2="600" y2="649" marker-end="url(#a-on)" />
-        <line class="off" x1="700" y1="675" x2="759" y2="675" marker-end="url(#a-off)" />
+        <line class="on" x1="700" y1="675" x2="759" y2="675" marker-end="url(#a-on)" />
         <line class="off" x1="310" y1="650" x2="310" y2="599" marker-end="url(#a-off)" />
 
         <text class="l" x="195" y="102">App, /catalog</text>
@@ -330,15 +330,15 @@
         <text class="s" x="85" y="532">Google, Apple, Outlook</text>
         <rect class="live" x="960" y="85" width="140" height="50" rx="4" />
         <text class="t" x="1030" y="105">✓ GitHub Actions</text>
-        <text class="s" x="1030" y="122">CI, Terraform</text>
+        <text class="s" x="1030" y="122">main → dev, Tag → prod</text>
 
         <!-- edge and auth -->
         <rect class="live" x="240" y="85" width="140" height="50" rx="4" />
         <text class="t" x="310" y="105">✓ CloudFront</text>
         <text class="s" x="310" y="122">HTTPS, Caching</text>
-        <rect class="part" x="470" y="85" width="170" height="50" rx="4" />
-        <text class="t" x="555" y="105">◐ S3 Frontend</text>
-        <text class="s" x="555" y="122">App mit Beispieldaten, /catalog</text>
+        <rect class="live" x="470" y="85" width="170" height="50" rx="4" />
+        <text class="t" x="555" y="105">✓ S3 Frontend</text>
+        <text class="s" x="555" y="122">PWA, /catalog</text>
         <rect class="live" x="240" y="200" width="140" height="50" rx="4" />
         <text class="t" x="310" y="220">✓ Cognito</text>
         <text class="s" x="310" y="237">Konten, Rollen</text>
@@ -378,14 +378,14 @@
         <rect class="todo" x="240" y="650" width="140" height="50" rx="4" />
         <text class="t" x="310" y="670">○ ECS Fargate</text>
         <text class="s" x="310" y="687">k6 aus ECR, on demand</text>
-        <rect class="part" x="430" y="650" width="145" height="50" rx="4" />
-        <text class="t" x="502" y="670">◐ X-Ray</text>
-        <text class="s" x="502" y="687">Tracing aktiv, ungeprüft</text>
-        <rect class="part" x="585" y="650" width="115" height="50" rx="4" />
-        <text class="t" x="642" y="670">◐ CloudWatch</text>
-        <text class="s" x="642" y="687">Logs, keine Alarme</text>
-        <rect class="todo" x="760" y="650" width="140" height="50" rx="4" />
-        <text class="t" x="830" y="670">○ SNS</text>
+        <rect class="live" x="430" y="650" width="145" height="50" rx="4" />
+        <text class="t" x="502" y="670">✓ X-Ray</text>
+        <text class="s" x="502" y="687">ab Lambda bis DynamoDB</text>
+        <rect class="live" x="585" y="650" width="115" height="50" rx="4" />
+        <text class="t" x="642" y="670">✓ CloudWatch</text>
+        <text class="s" x="642" y="687">Dashboard, 4 Alarme</text>
+        <rect class="live" x="760" y="650" width="140" height="50" rx="4" />
+        <text class="t" x="830" y="670">✓ SNS</text>
         <text class="s" x="830" y="687">Alarm per E-Mail</text>
 
         <!-- legend -->
@@ -404,11 +404,11 @@
       </svg>
     </div>
     <figcaption>
-      Der grüne Pfad ist in dev geprüft: Die App lädt Kurse und Termine als Dateien über CloudFront, mit einer
-      signierten URL aus <code>GET /me/subscriptions</code>. Abos, Absagen, Raumänderungen und Admin-Änderungen
-      laufen über die API in die Datenbank, und die Lambda <code>catalog</code> schreibt daraus binnen etwa einer
-      Minute neue Dateien. Kalender-Apps holen den Plan über <code>/ical/{token}</code>. Der Login im Frontend
-      (gestrichelter Pfeil „Anmeldung“) fehlt noch.
+      Der grüne Pfad ist geprüft: Nach dem Login über Cognito lädt die App Kurse und Termine als Dateien über
+      CloudFront, mit einer signierten URL aus <code>GET /me/subscriptions</code>. Abos, Absagen, Raumänderungen und
+      Admin-Änderungen laufen über die API in die Datenbank, und die Lambda <code>catalog</code> schreibt daraus in
+      etwa 1–2 Minuten neue Dateien. Kalender-Apps holen den Plan über <code>/ical/{token}</code>. Fehler und ein
+      hängender Stream lösen einen Alarm per E-Mail aus. Gestrichelt ist nur noch der Lasttest.
     </figcaption>
   </figure>
 
@@ -416,34 +416,32 @@
     <section class="a">
       <h2>✓ Läuft</h2>
       <ul>
-        <li><b>Webseite und Katalog-Dateien</b><span>CloudFront mit Signaturpflicht auf <code>/catalog/*</code>, geteilter Cache.</span></li>
-        <li><b>7 Lambda-Funktionen</b><span>catalog, student, lecturer, admin, ical, pre-signup, health; Rechte im Backend geprüft.</span></li>
-        <li><b>DynamoDB mit Stream</b><span>Seed-Daten (SEB, WIB, 6 Kurse); Änderungen erreichen die Dateien in etwa 1 Minute.</span></li>
-        <li><b>Kalender-Abo</b><span>Token nur als Hash gespeichert, nicht in Logs.</span></li>
-        <li><b>CI/CD nach dev</b><span>Merge auf <code>main</code> deployt per OIDC.</span></li>
+        <li><b>App für alle Rollen</b><span>Login, Kurssuche, Tages- und Wochenansicht mit Markierungen, iCal-Link, Dozentenansicht, Admin-Bereich, Konto löschen; installierbar, Dark Mode, Lighthouse 100/100.</span></li>
+        <li><b>7 Lambda-Funktionen und Katalog-Dateien</b><span>Rechte im Backend geprüft; <code>/catalog/*</code> nur mit Signatur, Änderungen in 1–2 Minuten in den Dateien.</span></li>
+        <li><b>Monitoring</b><span>Dashboard je Umgebung, Alarme auf 5xx-Rate, p95-Latenz, Publisher-Fehler und <code>IteratorAge</code>, Mail per SNS; Alarm-Test bestanden.</span></li>
+        <li><b>dev und prod</b><span>Ein Terraform-Modul, nur Variablen verschieden; <code>main</code> deployt dev, Tag <code>v*</code> nach Freigabe prod.</span></li>
       </ul>
     </section>
     <section class="b">
       <h2>◐ Da, aber unvollständig</h2>
       <ul>
-        <li><b>Frontend</b><span>Zeigt Beispieldaten; Login, Kurssuche und Plan aus den Dateien fehlen (#14–#16).</span></li>
-        <li><b>Beobachtbarkeit</b><span>Logs und X-Ray-Tracing laufen, Dashboard und Alarme fehlen (#23).</span></li>
+        <li><b>UX-Abnahme</b><span>Test auf iPhone und Android und Usability-Test mit 3 Kommiliton:innen fehlen (#26).</span></li>
+        <li><b>Release</b><span>prod läuft mit <code>v0.1.0</code>; <code>v1.0.0</code> nach den Gerätetests (#27).</span></li>
       </ul>
     </section>
     <section class="c">
       <h2>○ Fehlt noch</h2>
       <ul>
-        <li><b>Monitoring</b><span>Dashboard, Alarme auf Fehler und <code>IteratorAge</code>, SNS (#23)</span></li>
-        <li><b>Lasttest</b><span>k6-Szenarien und Fargate-Modul (#28, #29)</span></li>
-        <li><b>Umgebung prod</b><span>Mit Freigabe beim Release-Tag (#24)</span></li>
-        <li><b>Zweiter Account</b><span>Deploy in den Account des Teampartners (#5)</span></li>
+        <li><b>Lasttest</b><span>Fargate-Modul, k6-Szenarien, Testläufe gegen dev (#28–#30)</span></li>
+        <li><b>Zweiter Account</b><span>Setup und Deploy im Account des Teampartners (#5)</span></li>
+        <li><b>Abschluss</b><span>Pricing (#31), destroy → apply (#33), README und Präsentation (#34)</span></li>
       </ul>
     </section>
   </div>
 
   <p class="foot">
-    Quelle: Live-Prüfungen in dev zwischen 09. und 14.11.2026 (Lambda-Aufrufe, CloudFront, Logs), Repository und
-    GitHub-Issues. Geprüft wurde nur der Referenz-Account. Kurse und Termine folgen ADR 0013. Die Lambda
+    Quelle: Live-Prüfungen in dev und prod zwischen 09. und 21.11.2026 (Lambda-Aufrufe, CloudFront, Logs, Alarm-Test,
+    X-Ray, Lighthouse), Repository und GitHub-Issues. Geprüft wurde nur der Referenz-Account. Kurse und Termine folgen ADR 0013. Die Lambda
     <code>health</code> ist ein technischer Test und gehört nicht zu den Fachfunktionen.
   </p>
 </main>
