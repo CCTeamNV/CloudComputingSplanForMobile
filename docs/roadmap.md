@@ -1,10 +1,11 @@
 # Roadmap bis zur Abgabe am 18.01.2027
 
-Rollen: **A** = Frontend/UX, **B** = Infra/Backend. B hat Noa umgesetzt; A ist offen, den Login (#14) übernimmt Noa.
+Rollen: **A** = Frontend/UX, **B** = Infra/Backend. B und bisher auch A hat Noa umgesetzt.
 Jeder PR wird von der anderen Person reviewt. Jede Person betreibt dev und prod im eigenen Account (ADR 0012).
 Grundsatz: früh deployen, jede Woche läuft `main` auf dev.
 
-Stand: 14.11.2026. Backend bis M2 fertig und in dev live geprüft; Frontend hängt hinter M1 (nur Login in Arbeit).
+Stand: 21.11.2026. M0–M2 fertig, M3 bis auf Gerätetests/Usability (#26) und `v1.0.0` (#27). dev und prod laufen
+(prod seit `v0.1.0`: https://d2o98an275iuyv.cloudfront.net). Als Nächstes: M4 Lasttest.
 
 ## M0: Fundament (bis 01.11.)
 
@@ -27,20 +28,24 @@ Projekt:
 - [x] B: Modul `auth` (Cognito, Pre-Sign-up-Lambda, Gruppen) (#43)
 - [x] B: Modul `data` (DynamoDB), Seed-Skript (Studiengang SEB, Admin-/Dozenten-/Testuser) (#42, #44, #48)
 - [x] B: Lambda `catalog` als Publisher statischer JSON-Dateien, Lambda `student` (Abos, signierte URLs; ADR 0013) (#45, #46, #47, #49)
-- [ ] A: Sign-up/Sign-in (PR #54), Kurssuche mit Filter, Abonnieren (#15), Tages- und Wochenansicht (#16)
+- [x] A: Sign-up/Sign-in (#54), Kurssuche mit Filter, Abonnieren (#56), Tages- und Wochenansicht (#57)
 
 ## M2: Pflege, Änderungen, iCal (bis 29.11.)
 
 - [x] B: Lambdas `admin`, `lecturer`, `ical`; Besitzprüfung für Dozierende (#50, #51, #52)
-- [ ] A: `/admin`-Bereich (Kurse, Termine, Rollen) (#20), Dozentenansicht (eigene Termine absagen, Raum ändern) (#21)
-- [ ] A: Markierung von Ausfällen/Raumänderungen im Plan, iCal-Link kopieren und neu erzeugen (#22)
+- [x] A: `/admin`-Bereich (Kurse, Termine, Rollen) (#61, Backend-Fix #60), Dozentenansicht (eigene Termine absagen,
+  Raum ändern) (#59)
+- [x] A: Markierung von Ausfällen/Raumänderungen im Plan, iCal-Link kopieren und neu erzeugen (#58)
 
 ## M3: Betrieb und prod (bis 13.12.)
 
-- [ ] B: Modul `monitoring` (Dashboard, Alarme inkl. `IteratorAge` des Streams, X-Ray), Log-Retention, PII-freie Logs (#23; Retention 30 Tage und PII-freie Logs schon umgesetzt)
-- [ ] B: `envs/prod`, Tag-Deploy mit manueller Freigabe (#24)
-- [ ] B: Account löschen (DSGVO) (Backend #53 fertig, UI in PR #54; #25)
-- [ ] A: UX-Feinschliff auf echten Geräten, Barrierefreiheit, Dark Mode, Leer- und Fehlerzustände (#26)
+- [x] B: Modul `monitoring` (Dashboard, 4 Alarme inkl. `IteratorAge`, X-Ray, SNS-Topic im Bootstrap), fachliche
+  Metriken; Alarm-Test, Trace und Log-Stichprobe in dev nachgewiesen (#62, #63)
+- [x] B: `envs/prod` über gemeinsames Modul `app`, Tag-Deploy mit Freigabe; Trust Policy nachgewiesen, prod geseedet
+  (#64, `v0.1.0`)
+- [x] B: Account löschen (DSGVO) (#53, #54)
+- [ ] A: UX-Feinschliff (#26): PWA, Dark Mode, Fokus, Offline-Hinweis, Lighthouse 100/100 erledigt (#67); offen:
+  Test auf iPhone und Android, Usability-Test mit 3 Kommiliton:innen
 - [ ] A+B: erstes Release `v1.0.0` auf prod (#27)
 
 ## M4: Lasttest (bis 20.12.)
@@ -57,7 +62,8 @@ Nur Fehlerbehebung. Nice-to-haves (Offline-Cache, Benachrichtigungen) nur, wenn 
 
 - [ ] A+B: Pricing-Szenarien mit AWS Pricing Calculator, Kosten des Lasttests (#31)
 - [ ] A: Screenshots für User Experience (#32)
-- [ ] B: `destroy` → `apply` auf leerem Zustand durchspielen und dokumentieren (#33)
+- [ ] B: `destroy` → `apply` auf leerem Zustand durchspielen und dokumentieren (#33; prod hat Cognito-Löschschutz,
+  siehe `infra/envs/prod/README.md`)
 - [ ] A+B: alle README-TODOs schließen, Architekturdiagramm aktualisieren (Stand: `docs/splan-architektur.html`), Präsentation proben (#34)
 
 ## 18.01.2027: Abgabe
