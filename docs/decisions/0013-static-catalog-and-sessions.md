@@ -84,11 +84,12 @@ Ergänzt ADR 0003 (Zugriffsmuster des persönlichen Plans) und ADR 0008 (Routen 
 
 ## Konsequenzen
 
-- Die Leselast beim Semesterstart hängt nicht mehr an Lambda-Concurrency und DynamoDB. Beide Wege lassen sich im
-  Lasttest vergleichen.
+- Die Leselast beim Semesterstart hängt nicht mehr an Lambda-Concurrency und DynamoDB. Der Lasttest (#30) misst nur
+  den statischen Weg (Cache-Hit-Rate von `/catalog/*`). Den Lambda-Weg gibt es im Code nicht mehr, deshalb wird er
+  rechnerisch mit denselben Annahmen verglichen (#31).
 - Die N+1-Abfragen im Backend entfallen; `student` verwaltet nur noch Abos, iCal-Token und das Konto.
-- Kein Dienst mit Grundgebühr. Auch CloudFront rechnet pro Anfrage ab; die tatsächliche Ersparnis wird im Abschnitt
-  Pricing berechnet.
+- Kein Dienst mit Grundgebühr. Auch CloudFront rechnet pro Anfrage ab; die tatsächliche Ersparnis steht im Abschnitt
+  Pricing als Tabelle „Planabruf: statisch vs. Lambda“ (#31).
 - Eine Absage ist erst nach Stream-Verzögerung und Cache-Ablauf sichtbar, im Normalfall nach bis zu etwa 2 Minuten.
 - Nach Logout oder Kontolöschung bleibt eine ausgestellte Signatur bis zu 1 Stunde gültig. Das betrifft nur die
   Kurs- und Termindaten, keine Nutzerdaten.
